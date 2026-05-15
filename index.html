@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meta Ads Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div class="brand-name">Meta Ads</div>
+    </div>
+    <nav class="nav">
+      <a class="nav-item active" href="#"><span class="nav-dot"></span>Overview</a>
+      <a class="nav-item" href="#"><span class="nav-dot"></span>Campaigns</a>
+      <a class="nav-item" href="#"><span class="nav-dot"></span>Ad Sets</a>
+      <a class="nav-item" href="#"><span class="nav-dot"></span>Ads</a>
+      <a class="nav-item" href="#"><span class="nav-dot"></span>Audiences</a>
+      <a class="nav-item" href="#"><span class="nav-dot"></span>Creatives</a>
+      <a class="nav-item" href="#"><span class="nav-dot"></span>Reports</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="account">
+        <div class="account-avatar">AC</div>
+        <div>
+          <div class="account-name">Acme Co.</div>
+          <div class="account-id">act_1029384756</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 class="page-title">Overview</h1>
+        <p class="page-subtitle">Performance across all active Meta campaigns</p>
+      </div>
+      <div class="controls">
+        <div class="segmented" id="rangeControl" role="tablist" aria-label="Date range">
+          <button class="seg-btn" data-range="7">7d</button>
+          <button class="seg-btn active" data-range="30">30d</button>
+          <button class="seg-btn" data-range="90">90d</button>
+        </div>
+        <select class="select" id="objectiveFilter" aria-label="Filter by objective">
+          <option value="all">All objectives</option>
+          <option value="Conversions">Conversions</option>
+          <option value="Traffic">Traffic</option>
+          <option value="Awareness">Awareness</option>
+          <option value="Engagement">Engagement</option>
+        </select>
+        <button class="btn-primary">Export</button>
+      </div>
+    </header>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2>Spend &amp; Revenue</h2>
+          <div class="legend">
+            <span class="legend-item"><span class="dot dot-spend"></span>Spend</span>
+            <span class="legend-item"><span class="dot dot-rev"></span>Revenue</span>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Spend by Objective</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="objectiveChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2>Audience Breakdown</h2>
+          <div class="legend">
+            <span class="legend-item"><span class="dot dot-male"></span>Male</span>
+            <span class="legend-item"><span class="dot dot-female"></span>Female</span>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="ageGenderChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Placement Performance</h2>
+        </div>
+        <div class="chart-wrap"><canvas id="placementChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Campaigns</h2>
+        <input type="search" class="search" id="campaignSearch" placeholder="Search campaigns…" />
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th data-sort="name">Campaign</th>
+              <th data-sort="objective">Objective</th>
+              <th data-sort="status">Status</th>
+              <th class="num" data-sort="spend">Spend</th>
+              <th class="num" data-sort="impressions">Impressions</th>
+              <th class="num" data-sort="clicks">Clicks</th>
+              <th class="num" data-sort="ctr">CTR</th>
+              <th class="num" data-sort="cpc">CPC</th>
+              <th class="num" data-sort="conversions">Conv.</th>
+              <th class="num" data-sort="roas">ROAS</th>
+            </tr>
+          </thead>
+          <tbody id="campaignBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Top Performing Ads</h2>
+      </div>
+      <div class="ads-grid" id="adsGrid"></div>
+    </section>
+
+    <footer class="footer">
+      <span>Data shown is sample data for demonstration purposes.</span>
+      <span id="lastUpdated"></span>
+    </footer>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
