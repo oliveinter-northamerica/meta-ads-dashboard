@@ -158,13 +158,18 @@
         <div>
           <label>Amazon source</label>
           <select id="amazonSource">
-            <option value="api">Live API (requires proxy)</option>
+            <option value="gsheet">Google Sheet link</option>
             <option value="csv">Paste CSV from Amazon report</option>
+            <option value="api">Live API (requires proxy)</option>
           </select>
         </div>
         <div>
           <button class="primary" onclick="run()">Pull & join</button>
         </div>
+      </div>
+      <div id="gsheetWrap">
+        <label>Google Sheet URL — File → Share → "Anyone with the link can view". The first tab is used unless the URL ends with <code>#gid=…</code>.</label>
+        <input id="gsheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0" />
       </div>
       <div id="csvWrap" style="display:none;">
         <label>Amazon Attribution raw export — needs <code>Ad group</code> (used as the join key) plus any of <code>Click-throughs</code>, <code>TotalDPV</code>, <code>TotalATC</code>, <code>TotalPurchase</code>, <code>TotalSales</code>. Optional <code>Date</code> column triggers date-range filtering. Daily rows for the same Ad group are aggregated automatically.</label>
@@ -368,6 +373,31 @@ async function showPreview(adId) {
   }
 }
 
+function gsheetCsvUrl(input) {
+  const url = (input || "").trim();
+  if (!url) throw new Error("Google Sheet URL is empty");
+  if (url.includes("output=csv") || url.includes("/export?format=csv")) return url;
+  const m = url.match(/\/spreadsheets\/d\/(?:e\/)?([a-zA-Z0-9-_]+)/);
+  if (!m) throw new Error("Not a Google Sheets URL");
+  const id = m[1];
+  const gidMatch = url.match(/[#?&]gid=(\d+)/);
+  const gid = gidMatch ? gidMatch[1] : "0";
+  return "https://docs.google.com/spreadsheets/d/" + id + "/export?format=csv&gid=" + gid;
+}
+
+async function fetchGsheetCsv(url) {
+  const csvUrl = gsheetCsvUrl(url);
+  const res = await fetch(csvUrl);
+  if (!res.ok) {
+    throw new Error("Google Sheet fetch failed (" + res.status + "). The sheet must be shared as 'Anyone with the link can view'.");
+  }
+  const text = await res.text();
+  if (text.trim().startsWith("<")) {
+    throw new Error("Google Sheet returned HTML, not CSV. Re-check the sharing setting.");
+  }
+  return text;
+}
+
 async function fetchAmazonApi(creds, startDate, endDate, fx) {
   if (!creds.amazonToken || !creds.amazonClient || !creds.amazonProfile) {
     throw new Error("Amazon credentials missing");
@@ -565,15 +595,16 @@ async function autoBuildMapping() {
     const meta = await fetchMeta(creds, since, until);
 
     let amazon;
-    const csv = $("amazonCsv").value.trim();
-    if (csv) {
-      amazon = parseCsv(csv, since, until, fx);
-    } else if ($("amazonSource").value === "api") {
+    const source = $("amazonSource").value;
+    if (source === "gsheet") {
+      setStatus("Fetching Google Sheet…");
+      const csvText = await fetchGsheetCsv($("gsheetUrl").value);
+      amazon = parseCsv(csvText, since, until, fx);
+    } else if (source === "csv") {
+      amazon = parseCsv($("amazonCsv").value, since, until, fx);
+    } else if (source === "api") {
       setStatus("Fetching Amazon Attribution…");
       amazon = await fetchAmazonApi(creds, since, until, fx);
-    } else {
-      setStatus("Paste an Amazon CSV in section 4 first (or switch to Live API).", true);
-      return;
     }
 
     const norm = (s) => (s || "").trim().toLowerCase();
@@ -639,9 +670,13 @@ async function run() {
     setStatus("Fetching Meta insights…");
     const fx = getFx();
     const metaPromise = fetchMeta(creds, since, until);
+    const source = $("amazonSource").value;
     let amazonPromise;
-    if ($("amazonSource").value === "api") {
+    if (source === "api") {
       amazonPromise = fetchAmazonApi(creds, since, until, fx);
+    } else if (source === "gsheet") {
+      amazonPromise = fetchGsheetCsv($("gsheetUrl").value)
+        .then(text => parseCsv(text, since, until, fx));
     } else {
       amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value, since, until, fx));
     }
@@ -669,8 +704,17 @@ async function run() {
   }
 }
 
+function updateSourceWraps() {
+  const v = $("amazonSource").value;
+  $("csvWrap").style.display = v === "csv" ? "" : "none";
+  $("gsheetWrap").style.display = v === "gsheet" ? "" : "none";
+}
 $("amazonSource").addEventListener("change", () => {
-  $("csvWrap").style.display = $("amazonSource").value === "csv" ? "" : "none";
+  localStorage.setItem("amazonSource", $("amazonSource").value);
+  updateSourceWraps();
+});
+$("gsheetUrl").addEventListener("change", () => {
+  localStorage.setItem("gsheetUrl", $("gsheetUrl").value.trim());
 });
 
 (function init() {
@@ -680,6 +724,9 @@ $("amazonSource").addEventListener("change", () => {
   loadCreds();
   loadFx();
   loadMapping();
+  $("amazonSource").value = localStorage.getItem("amazonSource") || "gsheet";
+  $("gsheetUrl").value = localStorage.getItem("gsheetUrl") || "";
+  updateSourceWraps();
 })();
 </script>
 </body>
