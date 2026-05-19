@@ -291,6 +291,17 @@ function defaultDates() {
   return { since: fmt(since), until: fmt(until) };
 }
 
+async function safeFetch(url, opts, label, hint) {
+  try {
+    return await fetch(url, opts);
+  } catch (e) {
+    if (e instanceof TypeError) {
+      throw new Error(label + " could not be reached (" + e.message + "). " + hint);
+    }
+    throw e;
+  }
+}
+
 async function fetchMeta(creds, since, until) {
   if (!creds.metaToken || !creds.metaAccount) {
     throw new Error("Meta credentials missing");
@@ -306,7 +317,8 @@ async function fetchMeta(creds, since, until) {
             "/" + creds.metaAccount + "/insights?" + params.toString();
   const rows = [];
   while (url) {
-    const res = await fetch(url);
+    const res = await safeFetch(url, undefined, "Meta Graph API",
+      "Check your internet connection, disable ad blockers on graph.facebook.com, and confirm the access token is still valid.");
     const body = await res.json();
     if (!res.ok || body.error) throw new Error("Meta API: " + (body.error?.message || res.statusText));
     for (const r of body.data) {
@@ -332,7 +344,10 @@ async function fetchMetaThumbnails(creds, adIds) {
       ids: chunk.join(","),
       fields: "id,creative{thumbnail_url,image_url}",
     });
-    const res = await fetch("https://graph.facebook.com/" + creds.metaVersion + "/?" + params.toString());
+    const res = await safeFetch(
+      "https://graph.facebook.com/" + creds.metaVersion + "/?" + params.toString(),
+      undefined, "Meta Graph API",
+      "Check your internet connection and disable ad blockers on graph.facebook.com.");
     const body = await res.json();
     if (!res.ok || body.error) throw new Error("Meta thumbnails: " + (body.error?.message || res.statusText));
     for (const id of chunk) {
@@ -362,7 +377,10 @@ async function showPreview(adId) {
       access_token: creds.metaToken,
       ad_format: formats[0],
     });
-    const res = await fetch("https://graph.facebook.com/" + (creds.metaVersion || "v21.0") + "/" + adId + "/previews?" + params);
+    const res = await safeFetch(
+      "https://graph.facebook.com/" + (creds.metaVersion || "v21.0") + "/" + adId + "/previews?" + params,
+      undefined, "Meta Graph API",
+      "Check your internet connection and disable ad blockers on graph.facebook.com.");
     const body = await res.json();
     if (body.error) throw new Error(body.error.message);
     const html = body.data?.[0]?.body;
@@ -387,7 +405,8 @@ function gsheetCsvUrl(input) {
 
 async function fetchGsheetCsv(url) {
   const csvUrl = gsheetCsvUrl(url);
-  const res = await fetch(csvUrl);
+  const res = await safeFetch(csvUrl, undefined, "Google Sheets",
+    "Confirm the sheet is shared as 'Anyone with the link can view' and that the URL is reachable from this browser.");
   if (!res.ok) {
     throw new Error("Google Sheet fetch failed (" + res.status + "). The sheet must be shared as 'Anyone with the link can view'.");
   }
@@ -402,7 +421,7 @@ async function fetchAmazonApi(creds, startDate, endDate, fx) {
   if (!creds.amazonToken || !creds.amazonClient || !creds.amazonProfile) {
     throw new Error("Amazon credentials missing");
   }
-  const res = await fetch("https://advertising-api.amazon.com/attribution/report", {
+  const res = await safeFetch("https://advertising-api.amazon.com/attribution/report", {
     method: "POST",
     headers: {
       "Authorization": "Bearer " + creds.amazonToken,
@@ -417,7 +436,8 @@ async function fetchAmazonApi(creds, startDate, endDate, fx) {
       metrics: "Click-throughs,attributedDetailPageViewsClicks14d,attributedAddToCart14d,attributedPurchases14d,attributedSales14d",
       groupBy: "CREATIVE",
     }),
-  });
+  }, "Amazon Ads API",
+    "Amazon Ads API blocks direct browser calls (CORS). Switch the Amazon source to 'Paste CSV' or 'Google Sheet', or proxy /attribution/report through a server.");
   const body = await res.json();
   if (!res.ok) throw new Error("Amazon API: " + (body.message || res.statusText));
   const rate = lookupRate(fx || {}, startDate.slice(0, 7));
