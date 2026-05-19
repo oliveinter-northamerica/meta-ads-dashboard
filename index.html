@@ -46,6 +46,11 @@
   .error { background: #3a1212; border: 1px solid #6e2020; color: #fca5a5; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
   .warn { background: #3a2c12; border: 1px solid #6e5520; color: #fcd34d; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px; }
   .empty { color: #8a93a0; font-style: italic; padding: 24px; text-align: center; }
+  .fx-row { display: grid; grid-template-columns: 160px 1fr 32px; gap: 8px; margin-bottom: 6px; align-items: center; }
+  .fx-row input { width: 100%; }
+  .fx-row button { padding: 6px 10px; }
+  .fx-default { display: grid; grid-template-columns: 200px 1fr; gap: 8px; align-items: center; max-width: 400px; margin-bottom: 12px; }
+  .fx-default label { margin: 0; }
   code { background: #0b0d10; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
 </style>
 </head>
@@ -96,18 +101,19 @@
   <div class="card">
     <details>
       <summary>2. Currency (USD → KRW)</summary>
-      <div class="sub" style="margin-bottom: 8px;">
+      <div class="sub" style="margin-bottom: 12px;">
         Meta spend is in KRW; Amazon sales are in USD. Enter the KRW-per-USD rate by month.
-        Sales rows are converted using the rate for that row's month (from the Date column),
-        falling back to <code>default</code> when no match.
+        Each daily sales row is converted using its month's rate; the default is used when
+        a row's month has no entry.
       </div>
-      <label>JSON object: month (<code>YYYY-MM</code>) → KRW per USD. <code>default</code> applies when no monthly rate matches.</label>
-      <textarea id="fxRates" placeholder='{
-  "default": 1480,
-  "2026-05": 1480,
-  "2026-04": 1465
-}'></textarea>
+      <div class="fx-default">
+        <label>Default (KRW per USD)</label>
+        <input id="fxDefault" type="number" min="0" step="0.01" placeholder="1480" />
+      </div>
+      <label>Monthly rates</label>
+      <div id="fxRows"></div>
       <div style="margin-top: 8px;">
+        <button onclick="addFxRow()">+ Add month</button>
         <button onclick="saveFx()">Save rates</button>
       </div>
     </details>
@@ -198,19 +204,45 @@ function clearCreds() {
   loadCreds();
   setStatus("Credentials cleared.");
 }
+function addFxRow(month, rate) {
+  const row = document.createElement("div");
+  row.className = "fx-row";
+  row.innerHTML =
+    '<input type="month" class="fx-month" value="' + (month || "") + '" />' +
+    '<input type="number" class="fx-rate" min="0" step="0.01" placeholder="1480" value="' + (rate != null ? rate : "") + '" />' +
+    '<button onclick="this.parentElement.remove()" title="Remove">×</button>';
+  $("fxRows").appendChild(row);
+}
 function loadFx() {
-  $("fxRates").value = localStorage.getItem("fxRates") ||
-    '{\n  "default": 1480,\n  "2026-05": 1480\n}';
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem("fxRates") || "{}"); } catch {}
+  $("fxDefault").value = stored.default != null ? stored.default : "";
+  $("fxRows").innerHTML = "";
+  const months = Object.keys(stored).filter(k => /^\d{4}-\d{2}$/.test(k)).sort().reverse();
+  if (months.length === 0) {
+    const d = new Date();
+    addFxRow(d.toISOString().slice(0, 7), "");
+  } else {
+    for (const m of months) addFxRow(m, stored[m]);
+  }
 }
 function saveFx() {
-  try {
-    const parsed = JSON.parse($("fxRates").value);
-    if (typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("must be a JSON object");
-    localStorage.setItem("fxRates", $("fxRates").value);
-    setStatus("FX rates saved.");
-  } catch (e) {
-    setStatus("Invalid FX JSON: " + e.message, true);
+  const out = {};
+  const def = parseFloat($("fxDefault").value);
+  if (!isNaN(def) && def > 0) out.default = def;
+  const rows = $("fxRows").querySelectorAll(".fx-row");
+  let bad = false;
+  for (const r of rows) {
+    const m = r.querySelector(".fx-month").value;
+    const v = parseFloat(r.querySelector(".fx-rate").value);
+    if (!m && !v) continue;
+    if (!/^\d{4}-\d{2}$/.test(m)) { bad = true; continue; }
+    if (isNaN(v) || v <= 0) { bad = true; continue; }
+    out[m] = v;
   }
+  if (bad) { setStatus("Some rows had missing/invalid month or rate — skipped.", true); }
+  localStorage.setItem("fxRates", JSON.stringify(out));
+  if (!bad) setStatus("FX rates saved (" + Object.keys(out).filter(k => k !== "default").length + " months + default).");
 }
 function getFx() {
   try { return JSON.parse(localStorage.getItem("fxRates") || "{}"); }
