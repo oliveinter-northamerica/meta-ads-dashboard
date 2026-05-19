@@ -133,12 +133,15 @@
 ]'></textarea>
       <div style="margin-top: 8px;">
         <button onclick="saveMapping()">Save mapping</button>
+        <button onclick="clearMapping()">Clear (use auto-match)</button>
         <button onclick="autoBuildMapping()">Auto-build by name match</button>
       </div>
       <div class="sub" style="margin-top: 8px;">
-        Auto-build pulls Meta ads + Amazon data (CSV if pasted, else live API) and matches
-        Amazon <strong>Ad Group name</strong> to Meta <strong>Ad name</strong> (case-insensitive).
-        Uses the date range from section 4.
+        Leave this empty and <strong>Pull &amp; join</strong> will auto-match Meta
+        <strong>Ad name</strong> to the Google Sheet's <strong>Ad group name</strong>
+        (case-insensitive) on every run — no save needed. Paste JSON here only when you
+        want to override the auto-match. <strong>Auto-build by name match</strong> previews
+        what would be matched, using the date range from section 4.
       </div>
     </details>
   </div>
@@ -168,7 +171,7 @@
         </div>
       </div>
       <div id="gsheetWrap">
-        <label>Google Sheet URL — File → Share → "Anyone with the link can view". The first tab is used unless the URL ends with <code>#gid=…</code>.</label>
+        <label>Google Sheet URL — File → Share → "Anyone with the link can view". The first tab is used unless the URL ends with <code>#gid=…</code>. Meta ad names will be auto-matched to the sheet's <code>Ad group</code> column (unless section 3 has a saved manual mapping).</label>
         <input id="gsheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0" />
       </div>
       <div id="csvWrap" style="display:none;">
@@ -279,6 +282,11 @@ function saveMapping() {
   } catch (e) {
     setStatus("Invalid JSON: " + e.message, true);
   }
+}
+function clearMapping() {
+  localStorage.removeItem("mapping");
+  $("mapping").value = "";
+  setStatus("Manual mapping cleared. Next Pull & join will auto-match by name.");
 }
 function setStatus(msg, isError) {
   $("status").innerHTML = msg ? '<div class="' + (isError ? "error" : "warn") + '">' + msg + "</div>" : "";
@@ -602,6 +610,72 @@ function render(rows, totals, range) {
     '<h2>' + range.since + " → " + range.until + '</h2>' + kpiHtml + tableHtml;
 }
 
+async function fetchAmazon(source, since, until, fx, creds) {
+  if (source === "gsheet") {
+    setStatus("Fetching Google Sheet…");
+    const csvText = await fetchGsheetCsv($("gsheetUrl").value);
+    return parseCsv(csvText, since, until, fx);
+  }
+  if (source === "csv") {
+    return parseCsv($("amazonCsv").value, since, until, fx);
+  }
+  if (source === "api") {
+    setStatus("Fetching Amazon Attribution…");
+    return fetchAmazonApi(creds, since, until, fx);
+  }
+  throw new Error("Unknown Amazon source: " + source);
+}
+
+function buildMappingByName(meta, amazon) {
+  const norm = (s) => (s || "").trim().toLowerCase();
+
+  const metaByName = new Map();
+  for (const m of meta) {
+    const key = norm(m.adName);
+    if (!key) continue;
+    if (!metaByName.has(key)) metaByName.set(key, { displayName: m.adName, ids: [] });
+    metaByName.get(key).ids.push(m.adId);
+  }
+
+  const amazonByName = new Map();
+  for (const a of amazon) {
+    const key = norm(a.adGroupName);
+    if (!key) continue;
+    if (!amazonByName.has(key)) amazonByName.set(key, { displayName: a.adGroupName, tagIds: [] });
+    amazonByName.get(key).tagIds.push(a.tagId);
+  }
+
+  const mapping = [];
+  const unmatched = [];
+  let aggregated = 0;
+  for (const [key, amz] of amazonByName) {
+    const m = metaByName.get(key);
+    if (!m) { unmatched.push(amz.displayName); continue; }
+    if (m.ids.length > 1 || amz.tagIds.length > 1) aggregated++;
+    mapping.push({
+      metaAdIds: m.ids,
+      amazonTagIds: amz.tagIds,
+      label: m.displayName,
+    });
+  }
+  return { mapping, unmatched, aggregated };
+}
+
+function hasManualMapping() {
+  const raw = (localStorage.getItem("mapping") || "").trim();
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return false;
+    return parsed.some(m => {
+      const ids = m.metaAdIds || (m.metaAdId ? [m.metaAdId] : []);
+      const tags = m.amazonTagIds || (m.amazonTagId ? [m.amazonTagId] : []);
+      const real = (v) => v && v !== "REPLACE_ME";
+      return ids.some(real) && tags.some(real);
+    });
+  } catch { return false; }
+}
+
 async function autoBuildMapping() {
   setStatus("");
   try {
@@ -613,51 +687,9 @@ async function autoBuildMapping() {
     setStatus("Fetching Meta ads…");
     const fx = getFx();
     const meta = await fetchMeta(creds, since, until);
+    const amazon = await fetchAmazon($("amazonSource").value, since, until, fx, creds);
 
-    let amazon;
-    const source = $("amazonSource").value;
-    if (source === "gsheet") {
-      setStatus("Fetching Google Sheet…");
-      const csvText = await fetchGsheetCsv($("gsheetUrl").value);
-      amazon = parseCsv(csvText, since, until, fx);
-    } else if (source === "csv") {
-      amazon = parseCsv($("amazonCsv").value, since, until, fx);
-    } else if (source === "api") {
-      setStatus("Fetching Amazon Attribution…");
-      amazon = await fetchAmazonApi(creds, since, until, fx);
-    }
-
-    const norm = (s) => (s || "").trim().toLowerCase();
-
-    const metaByName = new Map();
-    for (const m of meta) {
-      const key = norm(m.adName);
-      if (!key) continue;
-      if (!metaByName.has(key)) metaByName.set(key, { displayName: m.adName, ids: [] });
-      metaByName.get(key).ids.push(m.adId);
-    }
-
-    const amazonByName = new Map();
-    for (const a of amazon) {
-      const key = norm(a.adGroupName);
-      if (!key) continue;
-      if (!amazonByName.has(key)) amazonByName.set(key, { displayName: a.adGroupName, tagIds: [] });
-      amazonByName.get(key).tagIds.push(a.tagId);
-    }
-
-    const mapping = [];
-    const unmatched = [];
-    let aggregated = 0;
-    for (const [key, amz] of amazonByName) {
-      const m = metaByName.get(key);
-      if (!m) { unmatched.push(amz.displayName); continue; }
-      if (m.ids.length > 1 || amz.tagIds.length > 1) aggregated++;
-      mapping.push({
-        metaAdIds: m.ids,
-        amazonTagIds: amz.tagIds,
-        label: m.displayName,
-      });
-    }
+    const { mapping, unmatched, aggregated } = buildMappingByName(meta, amazon);
 
     $("mapping").value = JSON.stringify(mapping, null, 2);
     let msg = "Auto-built " + mapping.length + " mappings from "
@@ -678,10 +710,6 @@ async function run() {
   setStatus("");
   $("results").innerHTML = "";
   const creds = JSON.parse(localStorage.getItem("creds") || "{}");
-  const mapping = (() => {
-    try { return JSON.parse(localStorage.getItem("mapping") || "[]"); }
-    catch { return []; }
-  })();
   const since = $("since").value;
   const until = $("until").value;
   if (!since || !until) { setStatus("Pick a date range.", true); return; }
@@ -689,18 +717,24 @@ async function run() {
   try {
     setStatus("Fetching Meta insights…");
     const fx = getFx();
-    const metaPromise = fetchMeta(creds, since, until);
     const source = $("amazonSource").value;
-    let amazonPromise;
-    if (source === "api") {
-      amazonPromise = fetchAmazonApi(creds, since, until, fx);
-    } else if (source === "gsheet") {
-      amazonPromise = fetchGsheetCsv($("gsheetUrl").value)
-        .then(text => parseCsv(text, since, until, fx));
+    const [meta, amazon] = await Promise.all([
+      fetchMeta(creds, since, until),
+      fetchAmazon(source, since, until, fx, creds),
+    ]);
+
+    let mapping;
+    let autoBuiltMsg = "";
+    if (hasManualMapping()) {
+      mapping = JSON.parse(localStorage.getItem("mapping"));
     } else {
-      amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value, since, until, fx));
+      const built = buildMappingByName(meta, amazon);
+      mapping = built.mapping;
+      $("mapping").value = JSON.stringify(mapping, null, 2);
+      autoBuiltMsg = " Auto-matched " + mapping.length + " ad↔tag pairs by name"
+        + (built.unmatched.length ? " (" + built.unmatched.length + " unmatched)" : "")
+        + ".";
     }
-    const [meta, amazon] = await Promise.all([metaPromise, amazonPromise]);
     const rows = joinByMapping(meta, amazon, mapping);
     const totals = rows.reduce((acc, r) => {
       acc.spend += r.spend; acc.sales += r.sales; acc.purchases += r.purchases;
@@ -708,14 +742,14 @@ async function run() {
     }, { spend: 0, sales: 0, purchases: 0 });
     totals.blendedRoas = totals.spend > 0 ? totals.sales / totals.spend : null;
 
-    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows. Fetching previews…");
+    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows." + autoBuiltMsg + " Fetching previews…");
     render(rows, totals, { since, until });
     try {
       const ids = [...new Set(rows.map(r => r.firstMetaAdId).filter(Boolean))];
       const thumbs = await fetchMetaThumbnails(creds, ids);
       rows.forEach(r => { r.thumbnailUrl = thumbs.get(r.firstMetaAdId) || null; });
       render(rows, totals, { since, until });
-      setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows.");
+      setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows." + autoBuiltMsg);
     } catch (e) {
       setStatus("Joined OK but preview thumbnails failed: " + e.message, true);
     }
