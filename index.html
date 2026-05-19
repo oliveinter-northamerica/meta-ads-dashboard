@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Meta × Amazon Attribution Dashboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0b0d10; color: #e6e8eb;
+  }
+  main { padding: 32px; max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 24px 0 8px; color: #8a93a0; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sub { color: #8a93a0; font-size: 13px; margin-bottom: 24px; }
+  .card { background: #15191f; border: 1px solid #2a313b; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  details summary { cursor: pointer; font-weight: 600; color: #e6e8eb; }
+  details[open] summary { margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: #8a93a0; margin: 8px 0 4px; }
+  input, textarea, button, select {
+    background: #0b0d10; color: #e6e8eb; border: 1px solid #2a313b;
+    padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit;
+  }
+  input, textarea, select { width: 100%; }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 120px; }
+  button { cursor: pointer; font-weight: 600; }
+  button:hover { background: #1d232b; }
+  button.primary { background: #2563eb; border-color: #2563eb; color: white; }
+  button.primary:hover { background: #1d4ed8; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
+  .controls > div { flex: 0 0 auto; }
+  .controls input { width: auto; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: #15191f; border: 1px solid #2a313b; border-radius: 8px; padding: 16px; }
+  .kpi-label { font-size: 11px; color: #8a93a0; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-size: 24px; font-weight: 600; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: #15191f; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 10px 12px; text-align: right; font-size: 13px; border-bottom: 1px solid #2a313b; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #1d232b; color: #8a93a0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  tr:last-child td { border-bottom: none; }
+  .roas-good { color: #4ade80; }
+  .roas-bad { color: #f87171; }
+  .error { background: #3a1212; border: 1px solid #6e2020; color: #fca5a5; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+  .warn { background: #3a2c12; border: 1px solid #6e5520; color: #fcd34d; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px; }
+  .empty { color: #8a93a0; font-style: italic; padding: 24px; text-align: center; }
+  .fx-row { display: grid; grid-template-columns: 160px 1fr 32px; gap: 8px; margin-bottom: 6px; align-items: center; }
+  .fx-row input { width: 100%; }
+  .fx-row button { padding: 6px 10px; }
+  .fx-default { display: grid; grid-template-columns: 200px 1fr; gap: 8px; align-items: center; max-width: 400px; margin-bottom: 12px; }
+  .fx-default label { margin: 0; }
+  .thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #2a313b; background: #0b0d10; }
+  .thumb:hover { border-color: #2563eb; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
+  .modal-content { background: #15191f; border: 1px solid #2a313b; border-radius: 8px; padding: 16px; max-width: 92vw; max-height: 92vh; overflow: auto; position: relative; min-width: 360px; }
+  .modal-close { position: absolute; top: 8px; right: 8px; padding: 4px 10px; font-size: 16px; line-height: 1; }
+  code { background: #0b0d10; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Meta × Amazon Attribution</h1>
+  <div class="sub">
+    Live ROAS view. Spend from the Meta Marketing API, sales from Amazon Attribution.
+    Credentials and mappings are stored locally in your browser.
+  </div>
+
+  <div class="warn">
+    <strong>CORS note.</strong> Meta's Graph API allows browser calls with an access token.
+    Amazon Ads API does <em>not</em> allow direct browser calls — choose the
+    <strong>Paste CSV</strong> source for Amazon, or run this file behind a proxy that adds
+    <code>Access-Control-Allow-Origin</code>. Keep this file local; tokens live in
+    <code>localStorage</code>.
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>1. Credentials</summary>
+      <div class="row">
+        <div>
+          <label>Meta access token (System User, <code>ads_read</code> scope)</label>
+          <input id="metaToken" type="password" placeholder="EAAB..." />
+          <label>Meta ad account ID (with <code>act_</code> prefix)</label>
+          <input id="metaAccount" placeholder="act_1234567890" />
+          <label>Meta API version</label>
+          <input id="metaVersion" placeholder="v21.0" />
+        </div>
+        <div>
+          <label>Amazon Ads access token (Bearer)</label>
+          <input id="amazonToken" type="password" placeholder="Atza|..." />
+          <label>Amazon Ads client ID</label>
+          <input id="amazonClient" placeholder="amzn1.application-oa2-client..." />
+          <label>Amazon Ads profile ID</label>
+          <input id="amazonProfile" placeholder="123456789" />
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <button onclick="saveCreds()">Save credentials</button>
+        <button onclick="clearCreds()">Clear</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>2. Currency (USD → KRW)</summary>
+      <div class="sub" style="margin-bottom: 12px;">
+        Meta spend is in KRW; Amazon sales are in USD. Enter the KRW-per-USD rate by month.
+        Each daily sales row is converted using its month's rate; the default is used when
+        a row's month has no entry.
+      </div>
+      <div class="fx-default">
+        <label>Default (KRW per USD)</label>
+        <input id="fxDefault" type="number" min="0" step="0.01" placeholder="1480" />
+      </div>
+      <label>Monthly rates</label>
+      <div id="fxRows"></div>
+      <div style="margin-top: 8px;">
+        <button onclick="addFxRow()">+ Add month</button>
+        <button onclick="saveFx()">Save rates</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>3. Ad ↔ Tag mapping</summary>
+      <label>JSON array of <code>{ metaAdId, amazonTagId, label }</code></label>
+      <textarea id="mapping" placeholder='[
+  { "metaAdId": "120203...", "amazonTagId": "tag_abc123", "label": "Spring Sale Carousel" }
+]'></textarea>
+      <div style="margin-top: 8px;">
+        <button onclick="saveMapping()">Save mapping</button>
+        <button onclick="clearMapping()">Clear (use auto-match)</button>
+        <button onclick="autoBuildMapping()">Auto-build by name match</button>
+      </div>
+      <div class="sub" style="margin-top: 8px;">
+        Leave this empty and <strong>Pull &amp; join</strong> will auto-match Meta
+        <strong>Ad name</strong> to the Google Sheet's <strong>Ad group name</strong>
+        (case-insensitive) on every run — no save needed. Paste JSON here only when you
+        want to override the auto-match. <strong>Auto-build by name match</strong> previews
+        what would be matched, using the date range from section 4.
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <details open>
+      <summary>4. Pull data</summary>
+      <div class="controls" style="margin-top: 12px;">
+        <div>
+          <label>Since</label>
+          <input id="since" type="date" />
+        </div>
+        <div>
+          <label>Until</label>
+          <input id="until" type="date" />
+        </div>
+        <div>
+          <label>Amazon source</label>
+          <select id="amazonSource">
+            <option value="gsheet">Google Sheet link</option>
+            <option value="csv">Paste CSV from Amazon report</option>
+            <option value="api">Live API (requires proxy)</option>
+          </select>
+        </div>
+        <div>
+          <button class="primary" onclick="run()">Pull & join</button>
+        </div>
+      </div>
+      <div id="gsheetWrap">
+        <label>Google Sheet URL — File → Share → "Anyone with the link can view". The first tab is used unless the URL ends with <code>#gid=…</code>. Meta ad names will be auto-matched to the sheet's <code>Ad group</code> column (unless section 3 has a saved manual mapping).</label>
+        <input id="gsheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0" />
+      </div>
+      <div id="csvWrap" style="display:none;">
+        <label>Amazon Attribution raw export — needs <code>Ad group</code> (used as the join key) plus any of <code>Click-throughs</code>, <code>TotalDPV</code>, <code>TotalATC</code>, <code>TotalPurchase</code>, <code>TotalSales</code>. Optional <code>Date</code> column triggers date-range filtering. Daily rows for the same Ad group are aggregated automatically.</label>
+        <textarea id="amazonCsv" placeholder="Date,Ad group,Campaigns,Channel,Publisher,Click-throughs,TotalDPV,TotalATC,TotalPurchase,TotalSales
+2026.5.17,260514_Meta_Collab_AyakoKawai_tomato,2605_Collab_tr_tomato,Social,Meta,97,67,1,0,$0.00"></textarea>
+      </div>
+    </details>
+  </div>
+
+  <div id="status"></div>
+  <div id="results"></div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtMoney = (n) => n.toLocaleString("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
+const fmtNum = (n) => n.toLocaleString("en-US");
+const fmtRoas = (n) => n == null ? "—" : n.toFixed(2) + "x";
+
+function loadCreds() {
+  const c = JSON.parse(localStorage.getItem("creds") || "{}");
+  $("metaToken").value = c.metaToken || "";
+  $("metaAccount").value = c.metaAccount || "";
+  $("metaVersion").value = c.metaVersion || "v21.0";
+  $("amazonToken").value = c.amazonToken || "";
+  $("amazonClient").value = c.amazonClient || "";
+  $("amazonProfile").value = c.amazonProfile || "";
+}
+function saveCreds() {
+  localStorage.setItem("creds", JSON.stringify({
+    metaToken: $("metaToken").value.trim(),
+    metaAccount: $("metaAccount").value.trim(),
+    metaVersion: $("metaVersion").value.trim() || "v21.0",
+    amazonToken: $("amazonToken").value.trim(),
+    amazonClient: $("amazonClient").value.trim(),
+    amazonProfile: $("amazonProfile").value.trim(),
+  }));
+  setStatus("Credentials saved to localStorage.");
+}
+function clearCreds() {
+  localStorage.removeItem("creds");
+  loadCreds();
+  setStatus("Credentials cleared.");
+}
+function addFxRow(month, rate) {
+  const row = document.createElement("div");
+  row.className = "fx-row";
+  row.innerHTML =
+    '<input type="month" class="fx-month" value="' + (month || "") + '" />' +
+    '<input type="number" class="fx-rate" min="0" step="0.01" placeholder="1480" value="' + (rate != null ? rate : "") + '" />' +
+    '<button onclick="this.parentElement.remove()" title="Remove">×</button>';
+  $("fxRows").appendChild(row);
+}
+function loadFx() {
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem("fxRates") || "{}"); } catch {}
+  $("fxDefault").value = stored.default != null ? stored.default : "";
+  $("fxRows").innerHTML = "";
+  const months = Object.keys(stored).filter(k => /^\d{4}-\d{2}$/.test(k)).sort().reverse();
+  if (months.length === 0) {
+    const d = new Date();
+    addFxRow(d.toISOString().slice(0, 7), "");
+  } else {
+    for (const m of months) addFxRow(m, stored[m]);
+  }
+}
+function saveFx() {
+  const out = {};
+  const def = parseFloat($("fxDefault").value);
+  if (!isNaN(def) && def > 0) out.default = def;
+  const rows = $("fxRows").querySelectorAll(".fx-row");
+  let bad = false;
+  for (const r of rows) {
+    const m = r.querySelector(".fx-month").value;
+    const v = parseFloat(r.querySelector(".fx-rate").value);
+    if (!m && !v) continue;
+    if (!/^\d{4}-\d{2}$/.test(m)) { bad = true; continue; }
+    if (isNaN(v) || v <= 0) { bad = true; continue; }
+    out[m] = v;
+  }
+  if (bad) { setStatus("Some rows had missing/invalid month or rate — skipped.", true); }
+  localStorage.setItem("fxRates", JSON.stringify(out));
+  if (!bad) setStatus("FX rates saved (" + Object.keys(out).filter(k => k !== "default").length + " months + default).");
+}
+function getFx() {
+  try { return JSON.parse(localStorage.getItem("fxRates") || "{}"); }
+  catch { return {}; }
+}
+function lookupRate(fx, month) {
+  if (month && fx[month] != null) return Number(fx[month]) || 1;
+  if (fx.default != null) return Number(fx.default) || 1;
+  const monthKeys = Object.keys(fx).filter(k => /^\d{4}-\d{2}$/.test(k));
+  if (monthKeys.length) return Number(fx[monthKeys[0]]) || 1;
+  return 1;
+}
+
+function loadMapping() {
+  $("mapping").value = localStorage.getItem("mapping") ||
+    '[\n  { "metaAdId": "REPLACE_ME", "amazonTagId": "REPLACE_ME", "label": "Example" }\n]';
+}
+function saveMapping() {
+  try {
+    const parsed = JSON.parse($("mapping").value);
+    if (!Array.isArray(parsed)) throw new Error("must be an array");
+    localStorage.setItem("mapping", $("mapping").value);
+    setStatus("Mapping saved (" + parsed.length + " entries).");
+  } catch (e) {
+    setStatus("Invalid JSON: " + e.message, true);
+  }
+}
+function clearMapping() {
+  localStorage.removeItem("mapping");
+  $("mapping").value = "";
+  setStatus("Manual mapping cleared. Next Pull & join will auto-match by name.");
+}
+function setStatus(msg, isError) {
+  $("status").innerHTML = msg ? '<div class="' + (isError ? "error" : "warn") + '">' + msg + "</div>" : "";
+}
+
+function defaultDates() {
+  const until = new Date();
+  const since = new Date(); since.setDate(since.getDate() - 30);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return { since: fmt(since), until: fmt(until) };
+}
+
+async function safeFetch(url, opts, label, hint) {
+  try {
+    return await fetch(url, opts);
+  } catch (e) {
+    if (e instanceof TypeError) {
+      throw new Error(label + " could not be reached (" + e.message + "). " + hint);
+    }
+    throw e;
+  }
+}
+
+async function fetchMeta(creds, since, until) {
+  if (!creds.metaToken || !creds.metaAccount) {
+    throw new Error("Meta credentials missing");
+  }
+  const params = new URLSearchParams({
+    access_token: creds.metaToken,
+    level: "ad",
+    fields: "ad_id,ad_name,spend,impressions,clicks",
+    time_range: JSON.stringify({ since, until }),
+    limit: "500",
+  });
+  let url = "https://graph.facebook.com/" + creds.metaVersion +
+            "/" + creds.metaAccount + "/insights?" + params.toString();
+  const rows = [];
+  while (url) {
+    const res = await safeFetch(url, undefined, "Meta Graph API",
+      "Check your internet connection, disable ad blockers on graph.facebook.com, and confirm the access token is still valid.");
+    const body = await res.json();
+    if (!res.ok || body.error) throw new Error("Meta API: " + (body.error?.message || res.statusText));
+    for (const r of body.data) {
+      rows.push({
+        adId: r.ad_id, adName: r.ad_name,
+        spend: Number(r.spend || 0),
+        impressions: Number(r.impressions || 0),
+        clicks: Number(r.clicks || 0),
+      });
+    }
+    url = body.paging?.next;
+  }
+  return rows;
+}
+
+async function fetchMetaThumbnails(creds, adIds) {
+  if (!adIds.length) return new Map();
+  const out = new Map();
+  for (let i = 0; i < adIds.length; i += 50) {
+    const chunk = adIds.slice(i, i + 50);
+    const params = new URLSearchParams({
+      access_token: creds.metaToken,
+      ids: chunk.join(","),
+      fields: "id,creative{thumbnail_url,image_url}",
+    });
+    const res = await safeFetch(
+      "https://graph.facebook.com/" + creds.metaVersion + "/?" + params.toString(),
+      undefined, "Meta Graph API",
+      "Check your internet connection and disable ad blockers on graph.facebook.com.");
+    const body = await res.json();
+    if (!res.ok || body.error) throw new Error("Meta thumbnails: " + (body.error?.message || res.statusText));
+    for (const id of chunk) {
+      const ad = body[id];
+      const url = ad?.creative?.thumbnail_url || ad?.creative?.image_url;
+      if (url) out.set(id, url);
+    }
+  }
+  return out;
+}
+
+async function showPreview(adId) {
+  const creds = JSON.parse(localStorage.getItem("creds") || "{}");
+  if (!creds.metaToken) { alert("Meta credentials missing"); return; }
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML =
+    '<div class="modal-content">' +
+    '<button class="modal-close" onclick="this.parentElement.parentElement.remove()">×</button>' +
+    '<div id="previewBody" style="min-width: 320px; min-height: 200px;">Loading preview…</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  try {
+    const formats = ["MOBILE_FEED_STANDARD", "DESKTOP_FEED_STANDARD"];
+    const params = new URLSearchParams({
+      access_token: creds.metaToken,
+      ad_format: formats[0],
+    });
+    const res = await safeFetch(
+      "https://graph.facebook.com/" + (creds.metaVersion || "v21.0") + "/" + adId + "/previews?" + params,
+      undefined, "Meta Graph API",
+      "Check your internet connection and disable ad blockers on graph.facebook.com.");
+    const body = await res.json();
+    if (body.error) throw new Error(body.error.message);
+    const html = body.data?.[0]?.body;
+    if (!html) throw new Error("no preview returned");
+    overlay.querySelector("#previewBody").innerHTML = html;
+  } catch (e) {
+    overlay.querySelector("#previewBody").textContent = "Preview failed: " + e.message;
+  }
+}
+
+function gsheetCsvUrl(input) {
+  const url = (input || "").trim();
+  if (!url) throw new Error("Google Sheet URL is empty");
+  if (url.includes("output=csv") || url.includes("/export?format=csv")) return url;
+  const pubMatch = url.match(/\/spreadsheets\/d\/e\/([a-zA-Z0-9-_]+)/);
+  if (pubMatch) {
+    const gidMatch = url.match(/[#?&]gid=(\d+)/);
+    const gid = gidMatch ? gidMatch[1] : "0";
+    return "https://docs.google.com/spreadsheets/d/e/" + pubMatch[1] + "/pub?output=csv&gid=" + gid;
+  }
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!m) throw new Error("Not a Google Sheets URL");
+  const id = m[1];
+  const gidMatch = url.match(/[#?&]gid=(\d+)/);
+  const gid = gidMatch ? gidMatch[1] : "0";
+  return "https://docs.google.com/spreadsheets/d/" + id + "/export?format=csv&gid=" + gid;
+}
+
+async function fetchGsheetCsv(url) {
+  const csvUrl = gsheetCsvUrl(url);
+  const fileOrigin = location.protocol === "file:";
+  const hint = fileOrigin
+    ? "You're opening index.html via file:// — Google blocks the export redirect for that origin. Serve the file over http://localhost (e.g. `python3 -m http.server 8000`) or use a File → Publish to web URL."
+    : "Confirm the sheet is shared as 'Anyone with the link can view'. If the URL still fails, sign out of extra Google accounts or try a Publish-to-web URL.";
+  const res = await safeFetch(csvUrl, undefined, "Google Sheets", hint);
+  if (!res.ok) {
+    throw new Error("Google Sheet fetch failed (" + res.status + "). The sheet must be shared as 'Anyone with the link can view'.");
+  }
+  const text = await res.text();
+  if (text.trim().startsWith("<")) {
+    throw new Error("Google Sheet returned HTML, not CSV. Re-check the sharing setting.");
+  }
+  return text;
+}
+
+async function fetchAmazonApi(creds, startDate, endDate, fx) {
+  if (!creds.amazonToken || !creds.amazonClient || !creds.amazonProfile) {
+    throw new Error("Amazon credentials missing");
+  }
+  const res = await safeFetch("https://advertising-api.amazon.com/attribution/report", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + creds.amazonToken,
+      "Amazon-Advertising-API-ClientId": creds.amazonClient,
+      "Amazon-Advertising-API-Scope": creds.amazonProfile,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      reportType: "PERFORMANCE",
+      startDate: startDate.replace(/-/g, ""),
+      endDate: endDate.replace(/-/g, ""),
+      metrics: "Click-throughs,attributedDetailPageViewsClicks14d,attributedAddToCart14d,attributedPurchases14d,attributedSales14d",
+      groupBy: "CREATIVE",
+    }),
+  }, "Amazon Ads API",
+    "Amazon Ads API blocks direct browser calls (CORS). Switch the Amazon source to 'Paste CSV' or 'Google Sheet', or proxy /attribution/report through a server.");
+  const body = await res.json();
+  if (!res.ok) throw new Error("Amazon API: " + (body.message || res.statusText));
+  const rate = lookupRate(fx || {}, startDate.slice(0, 7));
+  return (body.reports || []).map((r) => ({
+    tagId: r.attributionTagId || r.creativeId || r.adGroupName || "",
+    adGroupName: r.adGroupName || "",
+    clicks: Number(r.click || 0),
+    detailPageViews: Number(r.detailPageView || 0),
+    addToCart: Number(r.addToCart || 0),
+    purchases: Number(r.purchases || 0),
+    sales: Number(r.attributedSales14d || 0) * rate,
+  }));
+}
+
+function parseCsvDate(s) {
+  s = (s || "").trim();
+  let m = s.match(/^(\d{4})[./\-](\d{1,2})[./\-](\d{1,2})$/);
+  if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    let y = m[3]; if (y.length === 2) y = "20" + y;
+    return y + "-" + m[1].padStart(2, "0") + "-" + m[2].padStart(2, "0");
+  }
+  return null;
+}
+
+function parseCsv(text, since, until, fx) {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const splitCsv = (line) => {
+    const out = []; let cur = ""; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') q = !q;
+      else if (c === "," && !q) { out.push(cur); cur = ""; }
+      else cur += c;
+    }
+    out.push(cur); return out.map(s => s.trim());
+  };
+  const headers = splitCsv(lines[0]).map(h => h.toLowerCase());
+  const findIdx = (...names) => {
+    for (const n of names) {
+      const i = headers.findIndex(h => h === n.toLowerCase() || h.includes(n.toLowerCase()));
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
+  const idxAdGroup = findIdx("ad group name", "ad group", "adgroup");
+  const idxTag = findIdx("attribution tag id", "tag id", "creative id");
+  if (idxAdGroup < 0 && idxTag < 0) {
+    throw new Error("CSV missing Ad group or Tag ID column");
+  }
+  const idxDate = findIdx("date");
+  const idxClicks = findIdx("click-throughs", "click throughs", "clicks");
+  const idxDpv = findIdx("totaldpv", "total dpv", "detail page view", "dpv");
+  const idxAtc = findIdx("totalatc", "total atc", "add to cart", "atc");
+  const idxPurch = findIdx("totalpurchase", "total purchase", "purchases", "purchase");
+  const idxSales = findIdx("totalsales", "total sales", "sales");
+
+  const byKey = new Map();
+  let filteredOut = 0;
+  for (const line of lines.slice(1)) {
+    const cells = splitCsv(line);
+    const keySource = idxAdGroup >= 0 ? cells[idxAdGroup] : cells[idxTag];
+    if (!keySource) continue;
+
+    const rowDate = idxDate >= 0 ? parseCsvDate(cells[idxDate]) : null;
+    if (rowDate && since && until && (rowDate < since || rowDate > until)) {
+      filteredOut++; continue;
+    }
+
+    const num = (i) => i >= 0 ? Number((cells[i] || "0").replace(/[$,]/g, "")) || 0 : 0;
+    const rate = lookupRate(fx || {}, rowDate ? rowDate.slice(0, 7) : null);
+    const existing = byKey.get(keySource) || {
+      tagId: idxTag >= 0 ? cells[idxTag] : keySource,
+      adGroupName: idxAdGroup >= 0 ? cells[idxAdGroup] : "",
+      clicks: 0, detailPageViews: 0, addToCart: 0, purchases: 0, sales: 0,
+    };
+    existing.clicks += num(idxClicks);
+    existing.detailPageViews += num(idxDpv);
+    existing.addToCart += num(idxAtc);
+    existing.purchases += num(idxPurch);
+    existing.sales += num(idxSales) * rate;
+    byKey.set(keySource, existing);
+  }
+  if (filteredOut > 0) console.log("CSV: filtered out " + filteredOut + " rows outside " + since + "..." + until);
+  return [...byKey.values()];
+}
+
+function joinByMapping(meta, amazon, mappings) {
+  const metaByAdId = new Map(meta.map(m => [m.adId, m]));
+  const amazonByTag = new Map(amazon.map(a => [a.tagId, a]));
+  const sum = (arr, k) => arr.reduce((acc, x) => acc + (x[k] || 0), 0);
+  return mappings.map(raw => {
+    const metaIds = raw.metaAdIds || (raw.metaAdId ? [raw.metaAdId] : []);
+    const tagIds = raw.amazonTagIds || (raw.amazonTagId ? [raw.amazonTagId] : []);
+    const metas = metaIds.map(id => metaByAdId.get(id)).filter(Boolean);
+    const amzs = tagIds.map(id => amazonByTag.get(id)).filter(Boolean);
+    const spend = sum(metas, "spend");
+    const sales = sum(amzs, "sales");
+    const purchases = sum(amzs, "purchases");
+    return {
+      label: raw.label,
+      metaAdId: metaIds.join(", "),
+      firstMetaAdId: metaIds[0] || null,
+      amazonTagId: tagIds.join(", "),
+      spend,
+      metaImpressions: sum(metas, "impressions"),
+      metaClicks: sum(metas, "clicks"),
+      amazonClicks: sum(amzs, "clicks"),
+      detailPageViews: sum(amzs, "detailPageViews"),
+      addToCart: sum(amzs, "addToCart"),
+      purchases, sales,
+      roas: spend > 0 ? sales / spend : null,
+      cpa: purchases > 0 ? spend / purchases : null,
+    };
+  });
+}
+
+function render(rows, totals, range) {
+  if (!rows.length) {
+    $("results").innerHTML = '<div class="empty">No mappings configured.</div>';
+    return;
+  }
+  const kpiHtml = `
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">Meta Spend</div><div class="kpi-value">${fmtMoney(totals.spend)}</div></div>
+      <div class="kpi"><div class="kpi-label">Amazon Sales</div><div class="kpi-value">${fmtMoney(totals.sales)}</div></div>
+      <div class="kpi"><div class="kpi-label">Purchases</div><div class="kpi-value">${fmtNum(totals.purchases)}</div></div>
+      <div class="kpi"><div class="kpi-label">Blended ROAS</div>
+        <div class="kpi-value ${totals.blendedRoas != null && totals.blendedRoas >= 1 ? "roas-good" : "roas-bad"}">${fmtRoas(totals.blendedRoas)}</div>
+      </div>
+    </div>`;
+  const tableHtml = `
+    <table>
+      <thead><tr>
+        <th>Preview</th><th>Ad</th><th>Spend</th><th>Impr.</th><th>Meta Clicks</th>
+        <th>Amz Clicks</th><th>DPV</th><th>ATC</th><th>Purchases</th>
+        <th>Sales</th><th>CPA</th><th>ROAS</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${r.thumbnailUrl
+              ? `<img class="thumb" src="${r.thumbnailUrl}" title="Click to preview" onclick="showPreview('${r.firstMetaAdId}')" />`
+              : (r.firstMetaAdId ? `<button onclick="showPreview('${r.firstMetaAdId}')">View</button>` : "—")}</td>
+            <td>${r.label}</td>
+            <td>${fmtMoney(r.spend)}</td>
+            <td>${fmtNum(r.metaImpressions)}</td>
+            <td>${fmtNum(r.metaClicks)}</td>
+            <td>${fmtNum(r.amazonClicks)}</td>
+            <td>${fmtNum(r.detailPageViews)}</td>
+            <td>${fmtNum(r.addToCart || 0)}</td>
+            <td>${fmtNum(r.purchases)}</td>
+            <td>${fmtMoney(r.sales)}</td>
+            <td>${r.cpa == null ? "—" : fmtMoney(r.cpa)}</td>
+            <td class="${r.roas != null && r.roas >= 1 ? "roas-good" : "roas-bad"}">${fmtRoas(r.roas)}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>`;
+  $("results").innerHTML =
+    '<h2>' + range.since + " → " + range.until + '</h2>' + kpiHtml + tableHtml;
+}
+
+async function fetchAmazon(source, since, until, fx, creds) {
+  if (source === "gsheet") {
+    setStatus("Fetching Google Sheet…");
+    const csvText = await fetchGsheetCsv($("gsheetUrl").value);
+    return parseCsv(csvText, since, until, fx);
+  }
+  if (source === "csv") {
+    return parseCsv($("amazonCsv").value, since, until, fx);
+  }
+  if (source === "api") {
+    setStatus("Fetching Amazon Attribution…");
+    return fetchAmazonApi(creds, since, until, fx);
+  }
+  throw new Error("Unknown Amazon source: " + source);
+}
+
+function buildMappingByName(meta, amazon) {
+  const norm = (s) => (s || "").trim().toLowerCase();
+
+  const metaByName = new Map();
+  for (const m of meta) {
+    const key = norm(m.adName);
+    if (!key) continue;
+    if (!metaByName.has(key)) metaByName.set(key, { displayName: m.adName, ids: [] });
+    metaByName.get(key).ids.push(m.adId);
+  }
+
+  const amazonByName = new Map();
+  for (const a of amazon) {
+    const key = norm(a.adGroupName);
+    if (!key) continue;
+    if (!amazonByName.has(key)) amazonByName.set(key, { displayName: a.adGroupName, tagIds: [] });
+    amazonByName.get(key).tagIds.push(a.tagId);
+  }
+
+  const mapping = [];
+  const unmatched = [];
+  let aggregated = 0;
+  for (const [key, amz] of amazonByName) {
+    const m = metaByName.get(key);
+    if (!m) { unmatched.push(amz.displayName); continue; }
+    if (m.ids.length > 1 || amz.tagIds.length > 1) aggregated++;
+    mapping.push({
+      metaAdIds: m.ids,
+      amazonTagIds: amz.tagIds,
+      label: m.displayName,
+    });
+  }
+  return { mapping, unmatched, aggregated };
+}
+
+function hasManualMapping() {
+  const raw = (localStorage.getItem("mapping") || "").trim();
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return false;
+    return parsed.some(m => {
+      const ids = m.metaAdIds || (m.metaAdId ? [m.metaAdId] : []);
+      const tags = m.amazonTagIds || (m.amazonTagId ? [m.amazonTagId] : []);
+      const real = (v) => v && v !== "REPLACE_ME";
+      return ids.some(real) && tags.some(real);
+    });
+  } catch { return false; }
+}
+
+async function autoBuildMapping() {
+  setStatus("");
+  try {
+    const creds = JSON.parse(localStorage.getItem("creds") || "{}");
+    const since = $("since").value;
+    const until = $("until").value;
+    if (!since || !until) { setStatus("Pick a date range in section 4 first.", true); return; }
+
+    setStatus("Fetching Meta ads…");
+    const fx = getFx();
+    const meta = await fetchMeta(creds, since, until);
+    const amazon = await fetchAmazon($("amazonSource").value, since, until, fx, creds);
+
+    const { mapping, unmatched, aggregated } = buildMappingByName(meta, amazon);
+
+    $("mapping").value = JSON.stringify(mapping, null, 2);
+    let msg = "Auto-built " + mapping.length + " mappings from "
+            + amazon.length + " Amazon rows / " + meta.length + " Meta ads."
+            + (aggregated ? " " + aggregated + " entries aggregate multiple IDs by shared name." : "");
+    if (unmatched.length) {
+      const sample = unmatched.slice(0, 5).join(", ") + (unmatched.length > 5 ? "…" : "");
+      msg += " Unmatched ad groups (" + unmatched.length + "): " + sample;
+    }
+    msg += " — review and click Save mapping.";
+    setStatus(msg);
+  } catch (e) {
+    setStatus(e.message, true);
+  }
+}
+
+async function run() {
+  setStatus("");
+  $("results").innerHTML = "";
+  const creds = JSON.parse(localStorage.getItem("creds") || "{}");
+  const since = $("since").value;
+  const until = $("until").value;
+  if (!since || !until) { setStatus("Pick a date range.", true); return; }
+
+  try {
+    setStatus("Fetching Meta insights…");
+    const fx = getFx();
+    const source = $("amazonSource").value;
+    const [meta, amazon] = await Promise.all([
+      fetchMeta(creds, since, until),
+      fetchAmazon(source, since, until, fx, creds),
+    ]);
+
+    let mapping;
+    let autoBuiltMsg = "";
+    if (hasManualMapping()) {
+      mapping = JSON.parse(localStorage.getItem("mapping"));
+    } else {
+      const built = buildMappingByName(meta, amazon);
+      mapping = built.mapping;
+      $("mapping").value = JSON.stringify(mapping, null, 2);
+      autoBuiltMsg = " Auto-matched " + mapping.length + " ad↔tag pairs by name"
+        + (built.unmatched.length ? " (" + built.unmatched.length + " unmatched)" : "")
+        + ".";
+    }
+    const rows = joinByMapping(meta, amazon, mapping);
+    const totals = rows.reduce((acc, r) => {
+      acc.spend += r.spend; acc.sales += r.sales; acc.purchases += r.purchases;
+      return acc;
+    }, { spend: 0, sales: 0, purchases: 0 });
+    totals.blendedRoas = totals.spend > 0 ? totals.sales / totals.spend : null;
+
+    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows." + autoBuiltMsg + " Fetching previews…");
+    render(rows, totals, { since, until });
+    try {
+      const ids = [...new Set(rows.map(r => r.firstMetaAdId).filter(Boolean))];
+      const thumbs = await fetchMetaThumbnails(creds, ids);
+      rows.forEach(r => { r.thumbnailUrl = thumbs.get(r.firstMetaAdId) || null; });
+      render(rows, totals, { since, until });
+      setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows." + autoBuiltMsg);
+    } catch (e) {
+      setStatus("Joined OK but preview thumbnails failed: " + e.message, true);
+    }
+  } catch (e) {
+    setStatus(e.message, true);
+  }
+}
+
+function updateSourceWraps() {
+  const v = $("amazonSource").value;
+  $("csvWrap").style.display = v === "csv" ? "" : "none";
+  $("gsheetWrap").style.display = v === "gsheet" ? "" : "none";
+}
+$("amazonSource").addEventListener("change", () => {
+  localStorage.setItem("amazonSource", $("amazonSource").value);
+  updateSourceWraps();
+});
+$("gsheetUrl").addEventListener("change", () => {
+  localStorage.setItem("gsheetUrl", $("gsheetUrl").value.trim());
+});
+
+(function init() {
+  const d = defaultDates();
+  $("since").value = d.since;
+  $("until").value = d.until;
+  loadCreds();
+  loadFx();
+  loadMapping();
+  $("amazonSource").value = localStorage.getItem("amazonSource") || "gsheet";
+  $("gsheetUrl").value = localStorage.getItem("gsheetUrl") || "";
+  updateSourceWraps();
+  if (location.protocol === "file:") {
+    setStatus("Heads up: you opened this via file:// — Google Sheets fetches will fail with a CORS error. Run <code>python3 -m http.server 8000</code> in this folder and open <code>http://localhost:8000/index.html</code> instead.", true);
+  }
+})();
+</script>
+</body>
+</html>
