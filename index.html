@@ -95,7 +95,27 @@
 
   <div class="card">
     <details>
-      <summary>2. Ad ↔ Tag mapping</summary>
+      <summary>2. Currency (USD → KRW)</summary>
+      <div class="sub" style="margin-bottom: 8px;">
+        Meta spend is in KRW; Amazon sales are in USD. Enter the KRW-per-USD rate by month.
+        Sales rows are converted using the rate for that row's month (from the Date column),
+        falling back to <code>default</code> when no match.
+      </div>
+      <label>JSON object: month (<code>YYYY-MM</code>) → KRW per USD. <code>default</code> applies when no monthly rate matches.</label>
+      <textarea id="fxRates" placeholder='{
+  "default": 1480,
+  "2026-05": 1480,
+  "2026-04": 1465
+}'></textarea>
+      <div style="margin-top: 8px;">
+        <button onclick="saveFx()">Save rates</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>3. Ad ↔ Tag mapping</summary>
       <label>JSON array of <code>{ metaAdId, amazonTagId, label }</code></label>
       <textarea id="mapping" placeholder='[
   { "metaAdId": "120203...", "amazonTagId": "tag_abc123", "label": "Spring Sale Carousel" }
@@ -107,14 +127,14 @@
       <div class="sub" style="margin-top: 8px;">
         Auto-build pulls Meta ads + Amazon data (CSV if pasted, else live API) and matches
         Amazon <strong>Ad Group name</strong> to Meta <strong>Ad name</strong> (case-insensitive).
-        Uses the date range from section 3.
+        Uses the date range from section 4.
       </div>
     </details>
   </div>
 
   <div class="card">
     <details open>
-      <summary>3. Pull data</summary>
+      <summary>4. Pull data</summary>
       <div class="controls" style="margin-top: 12px;">
         <div>
           <label>Since</label>
@@ -149,7 +169,7 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-const fmtMoney = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const fmtMoney = (n) => n.toLocaleString("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const fmtNum = (n) => n.toLocaleString("en-US");
 const fmtRoas = (n) => n == null ? "—" : n.toFixed(2) + "x";
 
@@ -178,6 +198,32 @@ function clearCreds() {
   loadCreds();
   setStatus("Credentials cleared.");
 }
+function loadFx() {
+  $("fxRates").value = localStorage.getItem("fxRates") ||
+    '{\n  "default": 1480,\n  "2026-05": 1480\n}';
+}
+function saveFx() {
+  try {
+    const parsed = JSON.parse($("fxRates").value);
+    if (typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("must be a JSON object");
+    localStorage.setItem("fxRates", $("fxRates").value);
+    setStatus("FX rates saved.");
+  } catch (e) {
+    setStatus("Invalid FX JSON: " + e.message, true);
+  }
+}
+function getFx() {
+  try { return JSON.parse(localStorage.getItem("fxRates") || "{}"); }
+  catch { return {}; }
+}
+function lookupRate(fx, month) {
+  if (month && fx[month] != null) return Number(fx[month]) || 1;
+  if (fx.default != null) return Number(fx.default) || 1;
+  const monthKeys = Object.keys(fx).filter(k => /^\d{4}-\d{2}$/.test(k));
+  if (monthKeys.length) return Number(fx[monthKeys[0]]) || 1;
+  return 1;
+}
+
 function loadMapping() {
   $("mapping").value = localStorage.getItem("mapping") ||
     '[\n  { "metaAdId": "REPLACE_ME", "amazonTagId": "REPLACE_ME", "label": "Example" }\n]';
@@ -234,7 +280,7 @@ async function fetchMeta(creds, since, until) {
   return rows;
 }
 
-async function fetchAmazonApi(creds, startDate, endDate) {
+async function fetchAmazonApi(creds, startDate, endDate, fx) {
   if (!creds.amazonToken || !creds.amazonClient || !creds.amazonProfile) {
     throw new Error("Amazon credentials missing");
   }
@@ -256,6 +302,7 @@ async function fetchAmazonApi(creds, startDate, endDate) {
   });
   const body = await res.json();
   if (!res.ok) throw new Error("Amazon API: " + (body.message || res.statusText));
+  const rate = lookupRate(fx || {}, startDate.slice(0, 7));
   return (body.reports || []).map((r) => ({
     tagId: r.attributionTagId || r.creativeId || r.adGroupName || "",
     adGroupName: r.adGroupName || "",
@@ -263,7 +310,7 @@ async function fetchAmazonApi(creds, startDate, endDate) {
     detailPageViews: Number(r.detailPageView || 0),
     addToCart: Number(r.addToCart || 0),
     purchases: Number(r.purchases || 0),
-    sales: Number(r.attributedSales14d || 0),
+    sales: Number(r.attributedSales14d || 0) * rate,
   }));
 }
 
@@ -279,7 +326,7 @@ function parseCsvDate(s) {
   return null;
 }
 
-function parseCsv(text, since, until) {
+function parseCsv(text, since, until, fx) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
   const splitCsv = (line) => {
@@ -319,12 +366,13 @@ function parseCsv(text, since, until) {
     const keySource = idxAdGroup >= 0 ? cells[idxAdGroup] : cells[idxTag];
     if (!keySource) continue;
 
-    if (idxDate >= 0 && since && until) {
-      const d = parseCsvDate(cells[idxDate]);
-      if (d && (d < since || d > until)) { filteredOut++; continue; }
+    const rowDate = idxDate >= 0 ? parseCsvDate(cells[idxDate]) : null;
+    if (rowDate && since && until && (rowDate < since || rowDate > until)) {
+      filteredOut++; continue;
     }
 
     const num = (i) => i >= 0 ? Number((cells[i] || "0").replace(/[$,]/g, "")) || 0 : 0;
+    const rate = lookupRate(fx || {}, rowDate ? rowDate.slice(0, 7) : null);
     const existing = byKey.get(keySource) || {
       tagId: idxTag >= 0 ? cells[idxTag] : keySource,
       adGroupName: idxAdGroup >= 0 ? cells[idxAdGroup] : "",
@@ -334,7 +382,7 @@ function parseCsv(text, since, until) {
     existing.detailPageViews += num(idxDpv);
     existing.addToCart += num(idxAtc);
     existing.purchases += num(idxPurch);
-    existing.sales += num(idxSales);
+    existing.sales += num(idxSales) * rate;
     byKey.set(keySource, existing);
   }
   if (filteredOut > 0) console.log("CSV: filtered out " + filteredOut + " rows outside " + since + "..." + until);
@@ -418,20 +466,21 @@ async function autoBuildMapping() {
     const creds = JSON.parse(localStorage.getItem("creds") || "{}");
     const since = $("since").value;
     const until = $("until").value;
-    if (!since || !until) { setStatus("Pick a date range in section 3 first.", true); return; }
+    if (!since || !until) { setStatus("Pick a date range in section 4 first.", true); return; }
 
     setStatus("Fetching Meta ads…");
+    const fx = getFx();
     const meta = await fetchMeta(creds, since, until);
 
     let amazon;
     const csv = $("amazonCsv").value.trim();
     if (csv) {
-      amazon = parseCsv(csv, since, until);
+      amazon = parseCsv(csv, since, until, fx);
     } else if ($("amazonSource").value === "api") {
       setStatus("Fetching Amazon Attribution…");
-      amazon = await fetchAmazonApi(creds, since, until);
+      amazon = await fetchAmazonApi(creds, since, until, fx);
     } else {
-      setStatus("Paste an Amazon CSV in section 3 first (or switch to Live API).", true);
+      setStatus("Paste an Amazon CSV in section 4 first (or switch to Live API).", true);
       return;
     }
 
@@ -496,12 +545,13 @@ async function run() {
 
   try {
     setStatus("Fetching Meta insights…");
+    const fx = getFx();
     const metaPromise = fetchMeta(creds, since, until);
     let amazonPromise;
     if ($("amazonSource").value === "api") {
-      amazonPromise = fetchAmazonApi(creds, since, until);
+      amazonPromise = fetchAmazonApi(creds, since, until, fx);
     } else {
-      amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value, since, until));
+      amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value, since, until, fx));
     }
     const [meta, amazon] = await Promise.all([metaPromise, amazonPromise]);
     const rows = joinByMapping(meta, amazon, mapping);
@@ -526,6 +576,7 @@ $("amazonSource").addEventListener("change", () => {
   $("since").value = d.since;
   $("until").value = d.until;
   loadCreds();
+  loadFx();
   loadMapping();
 })();
 </script>
