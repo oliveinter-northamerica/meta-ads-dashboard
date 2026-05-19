@@ -403,7 +403,13 @@ function gsheetCsvUrl(input) {
   const url = (input || "").trim();
   if (!url) throw new Error("Google Sheet URL is empty");
   if (url.includes("output=csv") || url.includes("/export?format=csv")) return url;
-  const m = url.match(/\/spreadsheets\/d\/(?:e\/)?([a-zA-Z0-9-_]+)/);
+  const pubMatch = url.match(/\/spreadsheets\/d\/e\/([a-zA-Z0-9-_]+)/);
+  if (pubMatch) {
+    const gidMatch = url.match(/[#?&]gid=(\d+)/);
+    const gid = gidMatch ? gidMatch[1] : "0";
+    return "https://docs.google.com/spreadsheets/d/e/" + pubMatch[1] + "/pub?output=csv&gid=" + gid;
+  }
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   if (!m) throw new Error("Not a Google Sheets URL");
   const id = m[1];
   const gidMatch = url.match(/[#?&]gid=(\d+)/);
@@ -413,8 +419,11 @@ function gsheetCsvUrl(input) {
 
 async function fetchGsheetCsv(url) {
   const csvUrl = gsheetCsvUrl(url);
-  const res = await safeFetch(csvUrl, undefined, "Google Sheets",
-    "Confirm the sheet is shared as 'Anyone with the link can view' and that the URL is reachable from this browser.");
+  const fileOrigin = location.protocol === "file:";
+  const hint = fileOrigin
+    ? "You're opening index.html via file:// — Google blocks the export redirect for that origin. Serve the file over http://localhost (e.g. `python3 -m http.server 8000`) or use a File → Publish to web URL."
+    : "Confirm the sheet is shared as 'Anyone with the link can view'. If the URL still fails, sign out of extra Google accounts or try a Publish-to-web URL.";
+  const res = await safeFetch(csvUrl, undefined, "Google Sheets", hint);
   if (!res.ok) {
     throw new Error("Google Sheet fetch failed (" + res.status + "). The sheet must be shared as 'Anyone with the link can view'.");
   }
@@ -781,6 +790,9 @@ $("gsheetUrl").addEventListener("change", () => {
   $("amazonSource").value = localStorage.getItem("amazonSource") || "gsheet";
   $("gsheetUrl").value = localStorage.getItem("gsheetUrl") || "";
   updateSourceWraps();
+  if (location.protocol === "file:") {
+    setStatus("Heads up: you opened this via file:// — Google Sheets fetches will fail with a CORS error. Run <code>python3 -m http.server 8000</code> in this folder and open <code>http://localhost:8000/index.html</code> instead.", true);
+  }
 })();
 </script>
 </body>
