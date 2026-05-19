@@ -51,6 +51,11 @@
   .fx-row button { padding: 6px 10px; }
   .fx-default { display: grid; grid-template-columns: 200px 1fr; gap: 8px; align-items: center; max-width: 400px; margin-bottom: 12px; }
   .fx-default label { margin: 0; }
+  .thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #2a313b; background: #0b0d10; }
+  .thumb:hover { border-color: #2563eb; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
+  .modal-content { background: #15191f; border: 1px solid #2a313b; border-radius: 8px; padding: 16px; max-width: 92vw; max-height: 92vh; overflow: auto; position: relative; min-width: 360px; }
+  .modal-close { position: absolute; top: 8px; right: 8px; padding: 4px 10px; font-size: 16px; line-height: 1; }
   code { background: #0b0d10; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
 </style>
 </head>
@@ -312,6 +317,57 @@ async function fetchMeta(creds, since, until) {
   return rows;
 }
 
+async function fetchMetaThumbnails(creds, adIds) {
+  if (!adIds.length) return new Map();
+  const out = new Map();
+  for (let i = 0; i < adIds.length; i += 50) {
+    const chunk = adIds.slice(i, i + 50);
+    const params = new URLSearchParams({
+      access_token: creds.metaToken,
+      ids: chunk.join(","),
+      fields: "id,creative{thumbnail_url,image_url}",
+    });
+    const res = await fetch("https://graph.facebook.com/" + creds.metaVersion + "/?" + params.toString());
+    const body = await res.json();
+    if (!res.ok || body.error) throw new Error("Meta thumbnails: " + (body.error?.message || res.statusText));
+    for (const id of chunk) {
+      const ad = body[id];
+      const url = ad?.creative?.thumbnail_url || ad?.creative?.image_url;
+      if (url) out.set(id, url);
+    }
+  }
+  return out;
+}
+
+async function showPreview(adId) {
+  const creds = JSON.parse(localStorage.getItem("creds") || "{}");
+  if (!creds.metaToken) { alert("Meta credentials missing"); return; }
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML =
+    '<div class="modal-content">' +
+    '<button class="modal-close" onclick="this.parentElement.parentElement.remove()">×</button>' +
+    '<div id="previewBody" style="min-width: 320px; min-height: 200px;">Loading preview…</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  try {
+    const formats = ["MOBILE_FEED_STANDARD", "DESKTOP_FEED_STANDARD"];
+    const params = new URLSearchParams({
+      access_token: creds.metaToken,
+      ad_format: formats[0],
+    });
+    const res = await fetch("https://graph.facebook.com/" + (creds.metaVersion || "v21.0") + "/" + adId + "/previews?" + params);
+    const body = await res.json();
+    if (body.error) throw new Error(body.error.message);
+    const html = body.data?.[0]?.body;
+    if (!html) throw new Error("no preview returned");
+    overlay.querySelector("#previewBody").innerHTML = html;
+  } catch (e) {
+    overlay.querySelector("#previewBody").textContent = "Preview failed: " + e.message;
+  }
+}
+
 async function fetchAmazonApi(creds, startDate, endDate, fx) {
   if (!creds.amazonToken || !creds.amazonClient || !creds.amazonProfile) {
     throw new Error("Amazon credentials missing");
@@ -436,6 +492,7 @@ function joinByMapping(meta, amazon, mappings) {
     return {
       label: raw.label,
       metaAdId: metaIds.join(", "),
+      firstMetaAdId: metaIds[0] || null,
       amazonTagId: tagIds.join(", "),
       spend,
       metaImpressions: sum(metas, "impressions"),
@@ -467,13 +524,16 @@ function render(rows, totals, range) {
   const tableHtml = `
     <table>
       <thead><tr>
-        <th>Ad</th><th>Spend</th><th>Impr.</th><th>Meta Clicks</th>
+        <th>Preview</th><th>Ad</th><th>Spend</th><th>Impr.</th><th>Meta Clicks</th>
         <th>Amz Clicks</th><th>DPV</th><th>ATC</th><th>Purchases</th>
         <th>Sales</th><th>CPA</th><th>ROAS</th>
       </tr></thead>
       <tbody>
         ${rows.map(r => `
           <tr>
+            <td>${r.thumbnailUrl
+              ? `<img class="thumb" src="${r.thumbnailUrl}" title="Click to preview" onclick="showPreview('${r.firstMetaAdId}')" />`
+              : (r.firstMetaAdId ? `<button onclick="showPreview('${r.firstMetaAdId}')">View</button>` : "—")}</td>
             <td>${r.label}</td>
             <td>${fmtMoney(r.spend)}</td>
             <td>${fmtNum(r.metaImpressions)}</td>
@@ -592,8 +652,18 @@ async function run() {
       return acc;
     }, { spend: 0, sales: 0, purchases: 0 });
     totals.blendedRoas = totals.spend > 0 ? totals.sales / totals.spend : null;
-    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows.");
+
+    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows. Fetching previews…");
     render(rows, totals, { since, until });
+    try {
+      const ids = [...new Set(rows.map(r => r.firstMetaAdId).filter(Boolean))];
+      const thumbs = await fetchMetaThumbnails(creds, ids);
+      rows.forEach(r => { r.thumbnailUrl = thumbs.get(r.firstMetaAdId) || null; });
+      render(rows, totals, { since, until });
+      setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows.");
+    } catch (e) {
+      setStatus("Joined OK but preview thumbnails failed: " + e.message, true);
+    }
   } catch (e) {
     setStatus(e.message, true);
   }
