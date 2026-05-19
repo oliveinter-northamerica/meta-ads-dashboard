@@ -136,9 +136,9 @@
         </div>
       </div>
       <div id="csvWrap" style="display:none;">
-        <label>Amazon Attribution CSV — needs columns including <code>Attribution Tag ID</code> (or <code>Creative ID</code>), <code>Click-throughs</code>, <code>Detail Page Views</code>, <code>Purchases</code>, <code>Sales</code></label>
-        <textarea id="amazonCsv" placeholder="Attribution Tag ID,Click-throughs,Detail Page Views,Purchases,Sales
-tag_abc123,142,89,11,438.50"></textarea>
+        <label>Amazon Attribution raw export — needs <code>Ad group</code> (used as the join key) plus any of <code>Click-throughs</code>, <code>TotalDPV</code>, <code>TotalATC</code>, <code>TotalPurchase</code>, <code>TotalSales</code>. Optional <code>Date</code> column triggers date-range filtering. Daily rows for the same Ad group are aggregated automatically.</label>
+        <textarea id="amazonCsv" placeholder="Date,Ad group,Campaigns,Channel,Publisher,Click-throughs,TotalDPV,TotalATC,TotalPurchase,TotalSales
+2026.5.17,260514_Meta_Collab_AyakoKawai_tomato,2605_Collab_tr_tomato,Social,Meta,97,67,1,0,$0.00"></textarea>
       </div>
     </details>
   </div>
@@ -250,23 +250,36 @@ async function fetchAmazonApi(creds, startDate, endDate) {
       reportType: "PERFORMANCE",
       startDate: startDate.replace(/-/g, ""),
       endDate: endDate.replace(/-/g, ""),
-      metrics: "Click-throughs,attributedDetailPageViewsClicks14d,attributedPurchases14d,attributedSales14d",
+      metrics: "Click-throughs,attributedDetailPageViewsClicks14d,attributedAddToCart14d,attributedPurchases14d,attributedSales14d",
       groupBy: "CREATIVE",
     }),
   });
   const body = await res.json();
   if (!res.ok) throw new Error("Amazon API: " + (body.message || res.statusText));
   return (body.reports || []).map((r) => ({
-    tagId: r.attributionTagId || r.creativeId || "",
+    tagId: r.attributionTagId || r.creativeId || r.adGroupName || "",
     adGroupName: r.adGroupName || "",
     clicks: Number(r.click || 0),
     detailPageViews: Number(r.detailPageView || 0),
+    addToCart: Number(r.addToCart || 0),
     purchases: Number(r.purchases || 0),
     sales: Number(r.attributedSales14d || 0),
   }));
 }
 
-function parseCsv(text) {
+function parseCsvDate(s) {
+  s = (s || "").trim();
+  let m = s.match(/^(\d{4})[./\-](\d{1,2})[./\-](\d{1,2})$/);
+  if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    let y = m[3]; if (y.length === 2) y = "20" + y;
+    return y + "-" + m[1].padStart(2, "0") + "-" + m[2].padStart(2, "0");
+  }
+  return null;
+}
+
+function parseCsv(text, since, until) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
   const splitCsv = (line) => {
@@ -287,25 +300,45 @@ function parseCsv(text) {
     }
     return -1;
   };
-  const idxTag = findIdx("attribution tag id", "tag id", "creative id");
   const idxAdGroup = findIdx("ad group name", "ad group", "adgroup");
-  const idxClicks = findIdx("click-throughs", "clicks");
-  const idxDpv = findIdx("detail page view");
-  const idxPurch = findIdx("purchases");
-  const idxSales = findIdx("sales");
-  if (idxTag < 0) throw new Error("CSV missing tag/creative id column");
-  return lines.slice(1).map(line => {
+  const idxTag = findIdx("attribution tag id", "tag id", "creative id");
+  if (idxAdGroup < 0 && idxTag < 0) {
+    throw new Error("CSV missing Ad group or Tag ID column");
+  }
+  const idxDate = findIdx("date");
+  const idxClicks = findIdx("click-throughs", "click throughs", "clicks");
+  const idxDpv = findIdx("totaldpv", "total dpv", "detail page view", "dpv");
+  const idxAtc = findIdx("totalatc", "total atc", "add to cart", "atc");
+  const idxPurch = findIdx("totalpurchase", "total purchase", "purchases", "purchase");
+  const idxSales = findIdx("totalsales", "total sales", "sales");
+
+  const byKey = new Map();
+  let filteredOut = 0;
+  for (const line of lines.slice(1)) {
     const cells = splitCsv(line);
-    const num = (i) => i >= 0 ? Number((cells[i] || "0").replace(/[$,]/g, "")) : 0;
-    return {
-      tagId: cells[idxTag],
+    const keySource = idxAdGroup >= 0 ? cells[idxAdGroup] : cells[idxTag];
+    if (!keySource) continue;
+
+    if (idxDate >= 0 && since && until) {
+      const d = parseCsvDate(cells[idxDate]);
+      if (d && (d < since || d > until)) { filteredOut++; continue; }
+    }
+
+    const num = (i) => i >= 0 ? Number((cells[i] || "0").replace(/[$,]/g, "")) || 0 : 0;
+    const existing = byKey.get(keySource) || {
+      tagId: idxTag >= 0 ? cells[idxTag] : keySource,
       adGroupName: idxAdGroup >= 0 ? cells[idxAdGroup] : "",
-      clicks: num(idxClicks),
-      detailPageViews: num(idxDpv),
-      purchases: num(idxPurch),
-      sales: num(idxSales),
+      clicks: 0, detailPageViews: 0, addToCart: 0, purchases: 0, sales: 0,
     };
-  });
+    existing.clicks += num(idxClicks);
+    existing.detailPageViews += num(idxDpv);
+    existing.addToCart += num(idxAtc);
+    existing.purchases += num(idxPurch);
+    existing.sales += num(idxSales);
+    byKey.set(keySource, existing);
+  }
+  if (filteredOut > 0) console.log("CSV: filtered out " + filteredOut + " rows outside " + since + "..." + until);
+  return [...byKey.values()];
 }
 
 function joinByMapping(meta, amazon, mappings) {
@@ -329,6 +362,7 @@ function joinByMapping(meta, amazon, mappings) {
       metaClicks: sum(metas, "clicks"),
       amazonClicks: sum(amzs, "clicks"),
       detailPageViews: sum(amzs, "detailPageViews"),
+      addToCart: sum(amzs, "addToCart"),
       purchases, sales,
       roas: spend > 0 ? sales / spend : null,
       cpa: purchases > 0 ? spend / purchases : null,
@@ -354,7 +388,7 @@ function render(rows, totals, range) {
     <table>
       <thead><tr>
         <th>Ad</th><th>Spend</th><th>Impr.</th><th>Meta Clicks</th>
-        <th>Amz Clicks</th><th>DPV</th><th>Purchases</th>
+        <th>Amz Clicks</th><th>DPV</th><th>ATC</th><th>Purchases</th>
         <th>Sales</th><th>CPA</th><th>ROAS</th>
       </tr></thead>
       <tbody>
@@ -366,6 +400,7 @@ function render(rows, totals, range) {
             <td>${fmtNum(r.metaClicks)}</td>
             <td>${fmtNum(r.amazonClicks)}</td>
             <td>${fmtNum(r.detailPageViews)}</td>
+            <td>${fmtNum(r.addToCart || 0)}</td>
             <td>${fmtNum(r.purchases)}</td>
             <td>${fmtMoney(r.sales)}</td>
             <td>${r.cpa == null ? "—" : fmtMoney(r.cpa)}</td>
@@ -391,7 +426,7 @@ async function autoBuildMapping() {
     let amazon;
     const csv = $("amazonCsv").value.trim();
     if (csv) {
-      amazon = parseCsv(csv);
+      amazon = parseCsv(csv, since, until);
     } else if ($("amazonSource").value === "api") {
       setStatus("Fetching Amazon Attribution…");
       amazon = await fetchAmazonApi(creds, since, until);
@@ -466,7 +501,7 @@ async function run() {
     if ($("amazonSource").value === "api") {
       amazonPromise = fetchAmazonApi(creds, since, until);
     } else {
-      amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value));
+      amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value, since, until));
     }
     const [meta, amazon] = await Promise.all([metaPromise, amazonPromise]);
     const rows = joinByMapping(meta, amazon, mapping);
