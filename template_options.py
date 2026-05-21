@@ -92,6 +92,11 @@ CUSTOM_EVENT_TYPES = [
     "OTHER",
 ]
 
+PACING_TYPES = ["", "standard", "no_pacing"]
+
+# Meta gender codes: 1 = male, 2 = female. Blank = all.
+GENDERS = ["", "1", "2", "1,2"]
+
 CTAS = [
     "SHOP_NOW",
     "LEARN_MORE",
@@ -123,11 +128,22 @@ COLUMNS = [
     ("campaign_objective", CAMPAIGN_OBJECTIVES),
     ("buying_type", BUYING_TYPES),
     ("special_ad_categories", SPECIAL_AD_CATEGORIES),
+    ("campaign_daily_budget_usd", None),
+    ("campaign_lifetime_budget_usd", None),
+    ("campaign_bid_strategy", BID_STRATEGIES),
+    ("campaign_spend_cap_usd", None),
+    ("campaign_start_time", None),
+    ("campaign_stop_time", None),
     # ad set
     ("adset_name", None),
     ("daily_budget_usd", None),
+    ("lifetime_budget_usd", None),
     ("bid_strategy", BID_STRATEGIES),
     ("bid_amount_usd", None),
+    ("bid_roas_floor", None),
+    ("daily_spend_cap_usd", None),
+    ("lifetime_spend_cap_usd", None),
+    ("pacing_type", PACING_TYPES),
     ("billing_event", BILLING_EVENTS),
     ("optimization_goal", OPTIMIZATION_GOALS),
     ("destination_type", DESTINATION_TYPES),
@@ -135,20 +151,29 @@ COLUMNS = [
     ("end_time", None),
     ("pixel_id", None),
     ("custom_event_type", CUSTOM_EVENT_TYPES),
+    ("application_id", None),
+    ("object_store_url", None),
+    ("dsa_beneficiary", None),
+    ("dsa_payor", None),
     # targeting
     ("saved_audience_id", None),
     ("countries", None),
     ("age_min", None),
     ("age_max", None),
+    ("genders", GENDERS),
+    ("included_custom_audience_ids", None),
+    ("excluded_custom_audience_ids", None),
     # ad / creative
     ("page_id", None),
     ("instagram_actor_id", None),
     ("ad_name", None),
     ("image_url", None),
+    ("video_id", None),
     ("primary_text", None),
     ("headline", None),
     ("description", None),
     ("link_url", None),
     ("url_tags", None),
     ("cta", CTAS),
+    ("conversion_domain", None),
 ]

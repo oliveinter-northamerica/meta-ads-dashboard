@@ -81,15 +81,29 @@ def build_targeting(row, dry_run=False):
         if not targeting:
             sys.exit(f"Saved audience {saved_id} has no targeting spec — open it in Ads Manager and check it has a location.")
         return targeting
-    return {
+    targeting = {
         "geo_locations": {"countries": [c.strip() for c in row["countries"].split(",") if c.strip()]},
         "age_min": int(row["age_min"]),
         "age_max": int(row["age_max"]),
     }
+    genders = _get(row, "genders")
+    if genders:
+        targeting["genders"] = [int(g.strip()) for g in genders.split(",") if g.strip()]
+    incl = _get(row, "included_custom_audience_ids")
+    if incl:
+        targeting["custom_audiences"] = [{"id": x.strip()} for x in incl.split(",") if x.strip()]
+    excl = _get(row, "excluded_custom_audience_ids")
+    if excl:
+        targeting["excluded_custom_audiences"] = [{"id": x.strip()} for x in excl.split(",") if x.strip()]
+    return targeting
 
 
 def _get(row, key, default=""):
     return (row.get(key) or default).strip() if isinstance(row.get(key), str) else (row.get(key) or default)
+
+
+def _is_cbo(campaign_row):
+    return bool(_get(campaign_row, "campaign_daily_budget_usd") or _get(campaign_row, "campaign_lifetime_budget_usd"))
 
 
 def build_campaign_params(row, name):
@@ -103,24 +117,77 @@ def build_campaign_params(row, name):
     buying = _get(row, "buying_type")
     if buying:
         params[Campaign.Field.buying_type] = buying
+
+    daily = _get(row, "campaign_daily_budget_usd")
+    lifetime = _get(row, "campaign_lifetime_budget_usd")
+    if daily and lifetime:
+        sys.exit(f"Campaign {name!r}: set campaign_daily_budget_usd OR campaign_lifetime_budget_usd, not both.")
+    if daily:
+        params["daily_budget"] = int(float(daily) * 100)
+    if lifetime:
+        params["lifetime_budget"] = int(float(lifetime) * 100)
+
+    bid = _get(row, "campaign_bid_strategy")
+    if bid:
+        params["bid_strategy"] = bid
+    cap = _get(row, "campaign_spend_cap_usd")
+    if cap:
+        params["spend_cap"] = int(float(cap) * 100)
+    start = _get(row, "campaign_start_time")
+    if start:
+        params["start_time"] = start
+    stop = _get(row, "campaign_stop_time")
+    if stop:
+        params["stop_time"] = stop
     return params
 
 
-def build_adset_params(row, name, campaign_id, dry_run):
+def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None):
+    cbo = _is_cbo(campaign_row) if campaign_row else False
+    daily_budget = _get(row, "daily_budget_usd")
+    lifetime_budget = _get(row, "lifetime_budget_usd")
+    if cbo and (daily_budget or lifetime_budget):
+        sys.exit(
+            f"Ad set {name!r}: parent campaign uses CBO (campaign_daily_budget_usd or campaign_lifetime_budget_usd set). "
+            "Leave daily_budget_usd and lifetime_budget_usd blank on rows under this campaign."
+        )
+    if not cbo and daily_budget and lifetime_budget:
+        sys.exit(f"Ad set {name!r}: set daily_budget_usd OR lifetime_budget_usd, not both.")
+    if not cbo and not daily_budget and not lifetime_budget:
+        sys.exit(f"Ad set {name!r}: needs daily_budget_usd or lifetime_budget_usd (ABO), or a campaign-level budget on the campaign (CBO).")
+
     bid_strategy = _get(row, "bid_strategy") or "LOWEST_COST_WITHOUT_CAP"
     params = {
         AdSet.Field.name: name,
         AdSet.Field.campaign_id: campaign_id,
-        AdSet.Field.daily_budget: int(float(row["daily_budget_usd"]) * 100),
         AdSet.Field.billing_event: row["billing_event"],
         AdSet.Field.optimization_goal: row["optimization_goal"],
-        AdSet.Field.bid_strategy: bid_strategy,
         AdSet.Field.targeting: build_targeting(row, dry_run=dry_run),
         AdSet.Field.status: PAUSED,
     }
-    bid_amount = _get(row, "bid_amount_usd")
-    if bid_amount:
-        params[AdSet.Field.bid_amount] = int(float(bid_amount) * 100)
+    if not cbo:
+        params[AdSet.Field.bid_strategy] = bid_strategy
+        if daily_budget:
+            params[AdSet.Field.daily_budget] = int(float(daily_budget) * 100)
+        if lifetime_budget:
+            params[AdSet.Field.lifetime_budget] = int(float(lifetime_budget) * 100)
+        bid_amount = _get(row, "bid_amount_usd")
+        if bid_amount:
+            params[AdSet.Field.bid_amount] = int(float(bid_amount) * 100)
+        roas_floor = _get(row, "bid_roas_floor")
+        if roas_floor:
+            params["bid_constraints"] = {"roas_average_floor": int(float(roas_floor) * 100)}
+
+    daily_cap = _get(row, "daily_spend_cap_usd")
+    if daily_cap:
+        params["daily_spend_cap"] = int(float(daily_cap) * 100)
+    lifetime_cap = _get(row, "lifetime_spend_cap_usd")
+    if lifetime_cap:
+        params["lifetime_spend_cap"] = int(float(lifetime_cap) * 100)
+    pacing = _get(row, "pacing_type")
+    if pacing:
+        params["pacing_type"] = [pacing]
+
     destination = _get(row, "destination_type")
     if destination:
         params[AdSet.Field.destination_type] = destination
@@ -130,30 +197,60 @@ def build_adset_params(row, name, campaign_id, dry_run):
     end = _get(row, "end_time")
     if end:
         params[AdSet.Field.end_time] = end
+
+    promoted = {}
     pixel_id = _get(row, "pixel_id")
-    event_type = _get(row, "custom_event_type")
-    if pixel_id and event_type:
-        params[AdSet.Field.promoted_object] = {"pixel_id": pixel_id, "custom_event_type": event_type}
-    elif pixel_id:
-        params[AdSet.Field.promoted_object] = {"pixel_id": pixel_id}
+    if pixel_id:
+        promoted["pixel_id"] = pixel_id
+        event_type = _get(row, "custom_event_type")
+        if event_type:
+            promoted["custom_event_type"] = event_type
+    application_id = _get(row, "application_id")
+    if application_id:
+        promoted["application_id"] = application_id
+    object_store_url = _get(row, "object_store_url")
+    if object_store_url:
+        promoted["object_store_url"] = object_store_url
+    if promoted:
+        params[AdSet.Field.promoted_object] = promoted
+
+    dsa_b = _get(row, "dsa_beneficiary")
+    if dsa_b:
+        params["dsa_beneficiary"] = dsa_b
+    dsa_p = _get(row, "dsa_payor")
+    if dsa_p:
+        params["dsa_payor"] = dsa_p
     return params
 
 
 def build_creative_spec(row):
-    link_data = {
-        "link": row["link_url"],
-        "message": row["primary_text"],
-        "name": row["headline"],
-        "description": row["description"],
-        "picture": row["image_url"],
-        "call_to_action": {"type": row["cta"], "value": {"link": row["link_url"]}},
-    }
+    video_id = _get(row, "video_id")
+    image_url = _get(row, "image_url")
+    if not video_id and not image_url:
+        sys.exit(f"Ad {row.get('ad_name')!r}: needs image_url or video_id.")
+    if video_id:
+        video_data = {
+            "video_id": video_id,
+            "title": row["headline"],
+            "message": row["primary_text"],
+            "call_to_action": {"type": row["cta"], "value": {"link": row["link_url"]}},
+        }
+        if image_url:
+            video_data["image_url"] = image_url
+        story = {"page_id": row["page_id"], "video_data": video_data}
+    else:
+        link_data = {
+            "link": row["link_url"],
+            "message": row["primary_text"],
+            "name": row["headline"],
+            "description": row["description"],
+            "picture": image_url,
+            "call_to_action": {"type": row["cta"], "value": {"link": row["link_url"]}},
+        }
+        story = {"page_id": row["page_id"], "link_data": link_data}
     spec = {
         "name": f"Creative - {row['ad_name']}",
-        "object_story_spec": {
-            "page_id": row["page_id"],
-            "link_data": link_data,
-        },
+        "object_story_spec": story,
     }
     instagram_actor = _get(row, "instagram_actor_id")
     if instagram_actor:
@@ -198,7 +295,7 @@ def upload(account, tree, campaign_meta, adset_meta, dry_run):
 
             for a_name, ads in adsets.items():
                 am = adset_meta[(c_name, a_name)]
-                as_params = build_adset_params(am, a_name, campaign_id, dry_run)
+                as_params = build_adset_params(am, a_name, campaign_id, dry_run, campaign_row=cm)
                 if dry_run:
                     print("AD SET:", json.dumps(as_params, indent=2, default=str))
                     adset_id = f"DRY_ADSET_{a_name}"
@@ -223,6 +320,9 @@ def upload(account, tree, campaign_meta, adset_meta, dry_run):
                         Ad.Field.creative: {"creative_id": creative_id},
                         Ad.Field.status: PAUSED,
                     }
+                    conversion_domain = _get(ad_row, "conversion_domain")
+                    if conversion_domain:
+                        ad_params["conversion_domain"] = conversion_domain
                     if dry_run:
                         print("AD:", json.dumps(ad_params, indent=2))
                         ad_id = f"DRY_AD_{ad_row['ad_name']}"
