@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Meta Bulk Ad Uploader</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 720px; margin: 3em auto; padding: 0 1.5em;
+      color: #1f2328; background: #fff;
+    }
+    h1 { font-size: 1.6em; margin-bottom: 0.2em; }
+    .subtitle { color: #57606a; margin-top: 0; margin-bottom: 2em; }
+    .step {
+      background: #fff; border: 1px solid #d0d7de; border-radius: 8px;
+      padding: 1.4em 1.6em; margin-bottom: 1.2em;
+    }
+    .step h2 {
+      font-size: 1.05em; margin: 0 0 0.8em;
+      display: flex; align-items: center; gap: 0.6em;
+    }
+    .step-num {
+      background: #0969da; color: white; width: 26px; height: 26px;
+      border-radius: 50%; display: inline-flex;
+      align-items: center; justify-content: center; font-size: 0.85em;
+    }
+    label { display: block; font-size: 0.88em; color: #1f2328; margin-bottom: 0.3em; font-weight: 500; }
+    input[type=text], input[type=password] {
+      width: 100%; padding: 0.6em 0.8em;
+      border: 1px solid #d0d7de; border-radius: 6px;
+      font-size: 0.95em; font-family: inherit;
+    }
+    input[type=file] { font-size: 0.95em; }
+    .help { font-size: 0.82em; color: #57606a; margin-top: 0.4em; }
+    .help a { color: #0969da; }
+    .field { margin-bottom: 1em; }
+    .field:last-child { margin-bottom: 0; }
+    .download-btn {
+      display: inline-block; background: #f6f8fa;
+      border: 1px solid #d0d7de; border-radius: 6px;
+      padding: 0.6em 1em; text-decoration: none;
+      color: #1f2328; font-size: 0.95em; font-weight: 500;
+    }
+    .download-btn:hover { background: #eef1f4; }
+    .dry-run {
+      background: #fff8c5; border: 1px solid #d4a72c;
+      padding: 0.8em 1em; border-radius: 6px; margin: 1em 0;
+      font-size: 0.9em;
+    }
+    .dry-run label { display: flex; align-items: center; gap: 0.5em; cursor: pointer; margin: 0; }
+    .submit {
+      width: 100%; background: #1f883d; color: white;
+      border: 0; padding: 0.9em; border-radius: 6px;
+      font-size: 1.05em; font-weight: 500; cursor: pointer;
+      margin-top: 0.5em;
+    }
+    .submit:hover { background: #1a7f37; }
+    code { background: #f6f8fa; padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+
+<h1>Meta Bulk Ad Uploader</h1>
+<p class="subtitle">Upload a spreadsheet of ads. Everything is created as PAUSED — review in Ads Manager before activating.</p>
+
+<form method="POST" action="/upload" enctype="multipart/form-data">
+
+  <div class="step">
+    <h2><span class="step-num">1</span> Download the template</h2>
+    <p class="help" style="margin-top:0;">Excel file with dropdowns for objective, optimization goal, CTA, etc. Fill in one row per ad, then come back.</p>
+    <a class="download-btn" href="/template.xlsx" download>⬇ Download template.xlsx</a>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-num">2</span> Upload your filled spreadsheet</h2>
+    <div class="field">
+      <input type="file" name="file" accept=".csv,.xlsx" required>
+      <div class="help">Accepts <code>.xlsx</code> or <code>.csv</code>. Rows sharing a <code>campaign_name</code> become one campaign; same <code>campaign_name</code> + <code>adset_name</code> become one ad set.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-num">3</span> Meta credentials</h2>
+    <div class="field">
+      <label>Access token</label>
+      <input type="password" name="token" value="{{ default_token }}" placeholder="EAAB...">
+      <div class="help">Generate at <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Graph API Explorer</a> with <code>ads_management</code> scope.</div>
+    </div>
+    <div class="field">
+      <label>Ad account ID</label>
+      <input type="text" name="account_id" value="{{ default_account }}" placeholder="act_1234567890">
+      <div class="help">Top-left account dropdown in Ads Manager. Include the <code>act_</code> prefix.</div>
+    </div>
+  </div>
+
+  <div class="dry-run">
+    <label>
+      <input type="checkbox" name="dry_run" checked>
+      <strong>Dry run</strong> — preview the API payloads without creating anything. Uncheck when you're ready to actually upload.
+    </label>
+  </div>
+
+  <button type="submit" class="submit">Upload</button>
+</form>
+
+</body>
+</html>
