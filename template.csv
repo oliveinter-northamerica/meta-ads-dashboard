@@ -1,0 +1,4 @@
+campaign_name,campaign_objective,special_ad_categories,adset_name,daily_budget_usd,billing_event,optimization_goal,countries,age_min,age_max,page_id,ad_name,image_url,primary_text,headline,description,link_url,cta
+Spring Launch,OUTCOME_TRAFFIC,NONE,US Broad 25-54,50,IMPRESSIONS,LINK_CLICKS,US,25,54,1234567890,Ad A - Static,https://example.com/creative-a.jpg,Discover our new spring collection.,Spring is here,Shop the drop,https://example.com/spring,SHOP_NOW
+Spring Launch,OUTCOME_TRAFFIC,NONE,US Broad 25-54,50,IMPRESSIONS,LINK_CLICKS,US,25,54,1234567890,Ad B - Static,https://example.com/creative-b.jpg,Limited-edition styles back in stock.,Back in stock,Shop now,https://example.com/spring,SHOP_NOW
+Spring Launch,OUTCOME_TRAFFIC,NONE,CA Broad 25-54,30,IMPRESSIONS,LINK_CLICKS,CA,25,54,1234567890,Ad A - Static CA,https://example.com/creative-a.jpg,Discover our new spring collection.,Spring is here,Shop the drop,https://example.com/spring-ca,SHOP_NOW
