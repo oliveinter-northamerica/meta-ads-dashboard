@@ -12,9 +12,29 @@ export META_ACCESS_TOKEN=...        # token with ads_management scope
 export META_AD_ACCOUNT_ID=act_...   # ad account ID, with the act_ prefix
 ```
 
-## Usage
+## Usage — Web UI (recommended)
 
-1. Generate an Excel template with dropdowns on every enum column:
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Open http://localhost:5000 (in a Codespace, the **Ports** tab gives you a
+forwarded URL — click it). The page walks you through three steps:
+
+1. **Download** `template.xlsx` (button on the page) — open in Excel/Sheets,
+   fill rows using the dropdowns, save.
+2. **Upload** the filled file.
+3. Paste your **Access token** and **Ad account ID**, leave "Dry run" ticked
+   for a preview, then submit. Untick "Dry run" when you're ready to
+   actually create the ads in Meta.
+
+Results page lists the campaign / ad set / ad IDs that were created (all
+PAUSED) with a link to Ads Manager.
+
+## Usage — CLI
+
+Same flow without the browser:
    ```bash
    python generate_template.py
    ```
