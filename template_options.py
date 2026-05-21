@@ -2,6 +2,9 @@
 
 These mirror the Meta Marketing API enums. Keep this file the single source of
 truth so the CSV header, the Excel template, and the uploader stay in sync.
+
+Required vs optional is enforced in bulk_upload.py — this file just declares
+the columns and their dropdown values.
 """
 
 CAMPAIGN_OBJECTIVES = [
@@ -21,6 +24,15 @@ SPECIAL_AD_CATEGORIES = [
     "ISSUES_ELECTIONS_POLITICS",
     "ONLINE_GAMBLING_AND_GAMING",
     "FINANCIAL_PRODUCTS_SERVICES",
+]
+
+BUYING_TYPES = ["AUCTION", "RESERVED"]
+
+BID_STRATEGIES = [
+    "LOWEST_COST_WITHOUT_CAP",
+    "LOWEST_COST_WITH_BID_CAP",
+    "COST_CAP",
+    "LOWEST_COST_WITH_MIN_ROAS",
 ]
 
 BILLING_EVENTS = [
@@ -49,6 +61,37 @@ OPTIMIZATION_GOALS = [
     "AD_RECALL_LIFT",
 ]
 
+DESTINATION_TYPES = [
+    "WEBSITE",
+    "APP",
+    "MESSENGER",
+    "INSTAGRAM_DIRECT",
+    "WHATSAPP",
+    "FACEBOOK",
+    "ON_AD",
+    "ON_POST",
+    "ON_PAGE",
+    "ON_EVENT",
+    "ON_VIDEO",
+    "SHOP_AUTOMATIC",
+]
+
+CUSTOM_EVENT_TYPES = [
+    "",
+    "PURCHASE",
+    "LEAD",
+    "COMPLETE_REGISTRATION",
+    "ADD_TO_CART",
+    "INITIATE_CHECKOUT",
+    "ADD_PAYMENT_INFO",
+    "VIEW_CONTENT",
+    "SEARCH",
+    "SUBSCRIBE",
+    "CONTACT",
+    "DONATE",
+    "OTHER",
+]
+
 CTAS = [
     "SHOP_NOW",
     "LEARN_MORE",
@@ -73,24 +116,39 @@ CTAS = [
     "NO_BUTTON",
 ]
 
+# (column_name, dropdown_options or None)
 COLUMNS = [
+    # campaign
     ("campaign_name", None),
     ("campaign_objective", CAMPAIGN_OBJECTIVES),
+    ("buying_type", BUYING_TYPES),
     ("special_ad_categories", SPECIAL_AD_CATEGORIES),
+    # ad set
     ("adset_name", None),
     ("daily_budget_usd", None),
+    ("bid_strategy", BID_STRATEGIES),
+    ("bid_amount_usd", None),
     ("billing_event", BILLING_EVENTS),
     ("optimization_goal", OPTIMIZATION_GOALS),
+    ("destination_type", DESTINATION_TYPES),
+    ("start_time", None),
+    ("end_time", None),
+    ("pixel_id", None),
+    ("custom_event_type", CUSTOM_EVENT_TYPES),
+    # targeting
     ("saved_audience_id", None),
     ("countries", None),
     ("age_min", None),
     ("age_max", None),
+    # ad / creative
     ("page_id", None),
+    ("instagram_actor_id", None),
     ("ad_name", None),
     ("image_url", None),
     ("primary_text", None),
     ("headline", None),
     ("description", None),
     ("link_url", None),
+    ("url_tags", None),
     ("cta", CTAS),
 ]

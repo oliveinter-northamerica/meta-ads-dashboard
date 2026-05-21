@@ -57,26 +57,53 @@ Same flow without the browser:
 
 ## Columns
 
-| Column | Notes |
-| --- | --- |
-| `campaign_name` | Group key for campaigns |
-| `campaign_objective` | Dropdown: `OUTCOME_AWARENESS`, `OUTCOME_TRAFFIC`, `OUTCOME_ENGAGEMENT`, `OUTCOME_LEADS`, `OUTCOME_APP_PROMOTION`, `OUTCOME_SALES` |
-| `special_ad_categories` | Dropdown: `NONE`, `HOUSING`, `CREDIT`, `EMPLOYMENT`, `ISSUES_ELECTIONS_POLITICS`, `ONLINE_GAMBLING_AND_GAMING`, `FINANCIAL_PRODUCTS_SERVICES` |
-| `adset_name` | Group key for ad sets within a campaign |
-| `daily_budget_usd` | Dollars (converted to cents for the API) |
-| `billing_event` | Dropdown: `IMPRESSIONS`, `LINK_CLICKS`, `POST_ENGAGEMENT`, `VIDEO_VIEWS`, `THRUPLAY` |
-| `optimization_goal` | Dropdown: `REACH`, `IMPRESSIONS`, `LINK_CLICKS`, `LANDING_PAGE_VIEWS`, `POST_ENGAGEMENT`, `PAGE_LIKES`, `VIDEO_VIEWS`, `THRUPLAY`, `OFFSITE_CONVERSIONS`, `VALUE`, `LEAD_GENERATION`, `QUALITY_LEAD`, `CONVERSATIONS`, `APP_INSTALLS`, `AD_RECALL_LIFT` |
-| `saved_audience_id` | Optional. Paste a Saved Audience ID from Ads Manager → Audiences. When set, the script uses this audience and ignores `countries`/`age_min`/`age_max`. |
-| `countries` | Comma-separated ISO codes (`US,CA`). Used only when `saved_audience_id` is empty. |
-| `age_min`, `age_max` | Integers. Used only when `saved_audience_id` is empty. |
-| `page_id` | Facebook Page ID the ad runs from |
-| `ad_name` | Unique-ish per ad set |
-| `image_url` | Publicly reachable image URL |
-| `primary_text` | Body copy |
-| `headline` | Headline |
-| `description` | Link description |
-| `link_url` | Landing page |
-| `cta` | Dropdown: `SHOP_NOW`, `LEARN_MORE`, `SIGN_UP`, `SUBSCRIBE`, `DOWNLOAD`, `BOOK_TRAVEL`, `CONTACT_US`, `GET_OFFER`, `GET_QUOTE`, `APPLY_NOW`, `ORDER_NOW`, `DONATE_NOW`, `INSTALL_APP`, `USE_APP`, `WATCH_MORE`, `LISTEN_NOW`, `SEND_MESSAGE`, `MESSAGE_PAGE`, `GET_DIRECTIONS`, `CALL_NOW`, `NO_BUTTON` |
+### Campaign
+
+| Column | Required? | Notes |
+| --- | --- | --- |
+| `campaign_name` | yes | Group key — rows sharing this become one campaign |
+| `campaign_objective` | yes | Dropdown: `OUTCOME_AWARENESS`, `OUTCOME_TRAFFIC`, `OUTCOME_ENGAGEMENT`, `OUTCOME_LEADS`, `OUTCOME_APP_PROMOTION`, `OUTCOME_SALES` |
+| `buying_type` | yes | Dropdown: `AUCTION` (default), `RESERVED` |
+| `special_ad_categories` | yes | Dropdown: `NONE`, `HOUSING`, `CREDIT`, `EMPLOYMENT`, `ISSUES_ELECTIONS_POLITICS`, `ONLINE_GAMBLING_AND_GAMING`, `FINANCIAL_PRODUCTS_SERVICES` |
+
+### Ad set
+
+| Column | Required? | Notes |
+| --- | --- | --- |
+| `adset_name` | yes | Group key — rows sharing campaign + adset name become one ad set |
+| `daily_budget_usd` | yes | Dollars (converted to cents for the API) |
+| `bid_strategy` | yes | Dropdown: `LOWEST_COST_WITHOUT_CAP` (default — automatic bidding, "Highest volume" in Ads Manager), `LOWEST_COST_WITH_BID_CAP`, `COST_CAP`, `LOWEST_COST_WITH_MIN_ROAS` |
+| `bid_amount_usd` | conditional | Required if `bid_strategy` is `LOWEST_COST_WITH_BID_CAP` or `COST_CAP`. Dollars. |
+| `billing_event` | yes | Dropdown: `IMPRESSIONS`, `LINK_CLICKS`, `POST_ENGAGEMENT`, `VIDEO_VIEWS`, `THRUPLAY` |
+| `optimization_goal` | yes | Dropdown: `REACH`, `IMPRESSIONS`, `LINK_CLICKS`, `LANDING_PAGE_VIEWS`, `POST_ENGAGEMENT`, `PAGE_LIKES`, `VIDEO_VIEWS`, `THRUPLAY`, `OFFSITE_CONVERSIONS`, `VALUE`, `LEAD_GENERATION`, `QUALITY_LEAD`, `CONVERSATIONS`, `APP_INSTALLS`, `AD_RECALL_LIFT` |
+| `destination_type` | yes for most | Dropdown: `WEBSITE` (most common), `APP`, `MESSENGER`, `INSTAGRAM_DIRECT`, `WHATSAPP`, `FACEBOOK`, `ON_AD`, `ON_POST`, `ON_PAGE`, `ON_EVENT`, `ON_VIDEO`, `SHOP_AUTOMATIC` |
+| `start_time` | optional | ISO 8601 (e.g. `2026-06-01T09:00:00-0700`). Blank = start immediately. |
+| `end_time` | optional | ISO 8601. Blank = run indefinitely. |
+| `pixel_id` | conditional | Required for `OUTCOME_SALES` + `OFFSITE_CONVERSIONS`/`VALUE`. Your Meta Pixel ID. |
+| `custom_event_type` | conditional | Dropdown: `PURCHASE`, `LEAD`, `COMPLETE_REGISTRATION`, `ADD_TO_CART`, `INITIATE_CHECKOUT`, `ADD_PAYMENT_INFO`, `VIEW_CONTENT`, `SEARCH`, `SUBSCRIBE`, `CONTACT`, `DONATE`, `OTHER`. Pair with `pixel_id`. |
+
+### Targeting (one ad set's audience)
+
+| Column | Required? | Notes |
+| --- | --- | --- |
+| `saved_audience_id` | use this **or** the three below | Paste a Saved Audience ID from Ads Manager → Audiences. When set, the script fetches its full targeting spec and uses that — `countries`/`age_min`/`age_max` are ignored. |
+| `countries` | required if no saved audience | Comma-separated ISO codes (`US,CA`) |
+| `age_min`, `age_max` | required if no saved audience | Integers (13–65) |
+
+### Ad / creative
+
+| Column | Required? | Notes |
+| --- | --- | --- |
+| `page_id` | yes | Facebook Page ID the ad runs from. Must be connected to the ad account. |
+| `instagram_actor_id` | optional | Instagram account ID to also run the ad from. Blank = Facebook only. |
+| `ad_name` | yes | Unique within an ad set |
+| `image_url` | yes | Publicly fetchable image URL. Drive sharing links don't work — use Imgur, your CDN, S3, etc. |
+| `primary_text` | yes | Body copy above the ad |
+| `headline` | yes | Headline below the image |
+| `description` | yes | Link description (small grey text under the headline) |
+| `link_url` | yes | Landing page URL |
+| `url_tags` | optional | UTM query params, e.g. `utm_source=facebook&utm_medium=cpc&utm_campaign=spring`. Auto-appended to clicks. |
+| `cta` | yes | Dropdown: `SHOP_NOW`, `LEARN_MORE`, `SIGN_UP`, `SUBSCRIBE`, `DOWNLOAD`, `BOOK_TRAVEL`, `CONTACT_US`, `GET_OFFER`, `GET_QUOTE`, `APPLY_NOW`, `ORDER_NOW`, `DONATE_NOW`, `INSTALL_APP`, `USE_APP`, `WATCH_MORE`, `LISTEN_NOW`, `SEND_MESSAGE`, `MESSAGE_PAGE`, `GET_DIRECTIONS`, `CALL_NOW`, `NO_BUTTON` |
 
 ### Finding your Saved Audience ID
 
@@ -87,5 +114,6 @@ the `saved_audience_id` column.
 ## Safety
 
 - Every campaign, ad set, and ad is created with `status=PAUSED`.
-- Use `--dry-run` first to inspect the exact payloads.
-- The script never deletes or modifies existing entities — it only creates new ones.
+- Use `--dry-run` (or the Dry-run checkbox in the web UI) first to inspect the exact payloads.
+- **Rollback on failure**: if any step fails partway through a real upload, the script deletes the campaign / ad sets / ads it created in that run so you don't get orphan entities in Ads Manager.
+- The script never modifies entities it didn't create.
