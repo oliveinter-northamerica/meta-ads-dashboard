@@ -94,6 +94,32 @@ def _upload_video(account, url, dry_run):
     return result["id"]
 
 
+def _video_thumbnail(video_id, dry_run):
+    """Get an auto-generated thumbnail URL for an uploaded video. Meta
+    requires every video creative to carry image_hash or image_url in
+    video_data — even when the video object already has thumbnails — so we
+    fetch one and pass it through when the user didn't supply image_url."""
+    if dry_run:
+        return f"https://dry.thumbnail/{video_id}.jpg"
+    from facebook_business.adobjects.advideo import AdVideo
+    import time
+
+    # Thumbnails take a few seconds to generate after upload, so poll briefly.
+    for _ in range(6):
+        thumbs = AdVideo(video_id).get_thumbnails(fields=["uri", "is_preferred"])
+        thumbs = list(thumbs)
+        if thumbs:
+            for t in thumbs:
+                if t.get("is_preferred"):
+                    return t["uri"]
+            return thumbs[0]["uri"]
+        time.sleep(2)
+    sys.exit(
+        f"Video {video_id} has no thumbnail yet — Meta hasn't finished processing it. "
+        "Either wait ~1 minute and re-run, or set image_url manually as the thumbnail."
+    )
+
+
 def _build_cta(row):
     """Resolve the call_to_action object from the cta + browser_addon columns.
     browser_addon, when set to anything other than blank/NONE, overrides cta."""
@@ -345,14 +371,15 @@ def build_creative_spec(row, account=None, dry_run=False):
     if _is_multivariant(row):
         spec = _build_asset_feed_creative(row, image_url, video_id, cta_obj, display_link, account, dry_run)
     elif video_id:
+        if not image_url:
+            image_url = _video_thumbnail(video_id, dry_run)
         video_data = {
             "video_id": video_id,
             "title": row["headline"],
             "message": row["primary_text"],
             "call_to_action": cta_obj,
+            "image_url": image_url,
         }
-        if image_url:
-            video_data["image_url"] = image_url
         spec = {
             "name": f"Creative - {row['ad_name']}",
             "object_story_spec": {"page_id": row["page_id"], "video_data": video_data},
@@ -400,7 +427,9 @@ def _build_asset_feed_creative(row, image_url, video_id, cta_obj, display_link, 
         "call_to_action_types": [cta_obj["type"]],
     }
     if video_id:
-        asset_feed_spec["videos"] = [{"video_id": video_id}]
+        thumb_url = image_url or _video_thumbnail(video_id, dry_run)
+        thumb_hash = _upload_image(account, thumb_url, dry_run)
+        asset_feed_spec["videos"] = [{"video_id": video_id, "thumbnail_hash": thumb_hash}]
         asset_feed_spec["ad_formats"] = ["SINGLE_VIDEO"]
     else:
         image_hash = _upload_image(account, image_url, dry_run)
