@@ -84,6 +84,16 @@ def _upload_image(account, url, dry_run):
     return image[AdImage.Field.hash]
 
 
+def _upload_video(account, url, dry_run):
+    """Upload a video to /act_{id}/advideos via file_url (Meta fetches from
+    the URL itself) and return the video_id. Required when the user pastes
+    a video URL instead of pre-uploading and pasting the video_id."""
+    if dry_run:
+        return f"DRY_VIDEO_{abs(hash(url)) % 10**10}"
+    result = account.create_ad_video(params={"file_url": url})
+    return result["id"]
+
+
 def _build_cta(row):
     """Resolve the call_to_action object from the cta + browser_addon columns.
     browser_addon, when set to anything other than blank/NONE, overrides cta."""
@@ -321,9 +331,14 @@ def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, exist
 
 def build_creative_spec(row, account=None, dry_run=False):
     video_id = _get(row, "video_id")
+    video_url = convert_drive_url(_get(row, "video_url"))
     image_url = convert_drive_url(_get(row, "image_url"))
+    if video_id and video_url:
+        sys.exit(f"Ad {row.get('ad_name')!r}: set video_id OR video_url, not both.")
+    if video_url:
+        video_id = _upload_video(account, video_url, dry_run)
     if not video_id and not image_url:
-        sys.exit(f"Ad {row.get('ad_name')!r}: needs image_url or video_id.")
+        sys.exit(f"Ad {row.get('ad_name')!r}: needs image_url, video_id, or video_url.")
     cta_obj = _build_cta(row)
     display_link = _get(row, "display_link")
 

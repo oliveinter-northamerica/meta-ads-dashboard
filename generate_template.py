@@ -62,6 +62,7 @@ SAMPLE_ROW = {
     "ad_name": "Ad A - Static",
     "image_url": "https://example.com/creative-a.jpg",
     "video_id": "",
+    "video_url": "",
     "primary_text": "Discover our new spring collection.",
     "headline": "Spring is here",
     "description": "Shop the drop",

@@ -119,7 +119,8 @@ Same flow without the browser:
 | `threads_user_id` | optional | Threads profile ID to also run the ad from. |
 | `ad_name` | yes | Unique within an ad set |
 | `image_url` | image OR video | Publicly fetchable image URL. **Google Drive links** in any of the standard formats (`drive.google.com/file/d/<ID>/view`, `?id=<ID>`, etc.) are auto-converted to the `lh3.googleusercontent.com/d/<ID>` form that Meta can actually fetch. Used as the video thumbnail when `video_id` is also set. |
-| `video_id` | image OR video | Meta video ID for a video ad. When set, the ad becomes a video ad instead of a static image ad. |
+| `video_id` | image OR video | Meta video ID for a video ad. Use this if you already uploaded the video to your ad account's media library. When set, the ad becomes a video ad instead of a static image ad. |
+| `video_url` | image OR video | Alternative to `video_id` — paste any public video URL (Drive links auto-converted, same as `image_url`). The script uploads it to `/act_<id>/advideos` and uses the resulting video_id. Mutually exclusive with `video_id`. |
 | `primary_text` | yes | Body copy above the ad. **Multiple variants:** separate with `\|` (e.g. `Buy now!\|Limited time!`) and the script switches the creative to `asset_feed_spec` so Meta can A/B test them. |
 | `headline` | yes | Headline below the image / video title. Same `\|`-separation rule for variants. |
 | `description` | yes (image ads) | Link description (small grey text under the headline). Same `\|`-separation rule for variants. Ignored for video ads. |

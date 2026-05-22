@@ -176,6 +176,7 @@ COLUMNS = [
     ("ad_name", None),
     ("image_url", None),
     ("video_id", None),
+    ("video_url", None),
     ("primary_text", None),
     ("headline", None),
     ("description", None),
