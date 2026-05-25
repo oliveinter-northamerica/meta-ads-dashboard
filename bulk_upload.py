@@ -408,7 +408,7 @@ def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, exist
 
 
 def _apply_advantage_features(spec, row):
-    from template_options import ADVANTAGE_FEATURE_COLUMNS
+    from template_options import ADVANTAGE_FEATURE_COLUMNS, ADVANTAGE_FEATURE_API_SUPPORTED
 
     def enroll(val):
         v = (val or "").strip().upper()
@@ -421,10 +421,22 @@ def _apply_advantage_features(spec, row):
         # ads regardless of catalog use. Per-feature columns override.
         for f in ("IG_VIDEO_NATIVE_SUBTITLE", "IMAGE_ANIMATION", "TEXT_OVERLAY_TRANSLATION"):
             features_spec[f] = {"enroll_status": master}
+
+    skipped = []
     for col, api_key in ADVANTAGE_FEATURE_COLUMNS:
         per_feature = enroll(row.get(col))
-        if per_feature:
+        if not per_feature:
+            continue
+        if api_key in ADVANTAGE_FEATURE_API_SUPPORTED:
             features_spec[api_key] = {"enroll_status": per_feature}
+        else:
+            skipped.append(col)
+    if skipped:
+        print(
+            f"  Note: {len(skipped)} adv_* setting(s) skipped (UI-only, "
+            f"not exposed in Marketing API): {', '.join(skipped)}. "
+            "Configure manually in Ads Manager after upload."
+        )
     if features_spec:
         spec["degrees_of_freedom_spec"] = {"creative_features_spec": features_spec}
 

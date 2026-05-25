@@ -114,25 +114,48 @@ ADVANTAGE_PLUS_CREATIVE = ["", "ON", "OFF"]
 # switch (or Meta's default), ON = OPT_IN, OFF = OPT_OUT.
 ENROLL_STATUS = ["", "ON", "OFF"]
 
-# Maps each adv_* template column to the uppercase API feature key Meta
-# accepts in degrees_of_freedom_spec.creative_features_spec. This is the
-# *complete* set Meta currently exposes via the Marketing API. Other
-# toggles visible in Ads Manager's UI (Add overlays, Add music, Text
-# improvements, Visual touch-ups, Enhance CTA, Relevant comments,
-# Adjust brightness/contrast, Reveal details over time, Show spotlights)
-# are NOT exposed via the API — they can only be configured manually in
-# Ads Manager after upload.
+# Maps each adv_* template column to the uppercase API feature key. The
+# template keeps a column for every toggle visible in Ads Manager's
+# "Advantage+ creative" section so the spreadsheet matches what users
+# see in the UI. At upload time the script forwards only the keys
+# listed in ADVANTAGE_FEATURE_API_SUPPORTED below — the rest are
+# UI-only and silently skipped (with a one-line note) because Meta
+# hasn't exposed them in the Marketing API.
 ADVANTAGE_FEATURE_COLUMNS = [
-    # Universal (work on most ads)
-    ("adv_ig_video_subtitle", "IG_VIDEO_NATIVE_SUBTITLE"),
+    # Advantage+ creative enhancements
+    ("adv_add_overlays", "ADD_TEXT_OVERLAY"),
+    ("adv_image_touchups", "IMAGE_TOUCHUPS"),
+    ("adv_music", "MUSIC"),
+    ("adv_text_generation", "TEXT_GENERATION"),
     ("adv_image_animation", "IMAGE_ANIMATION"),
-    ("adv_profile_card", "PROFILE_CARD"),
+    ("adv_product_tags", "PRODUCT_TAGS"),
+    # Essential enhancements (mostly on by default)
+    ("adv_relevant_comments", "RELEVANT_COMMENTS"),
+    ("adv_enhance_cta", "CTA_ENHANCEMENT"),
+    ("adv_brightness_contrast", "IMAGE_BRIGHTNESS_AND_CONTRAST"),
+    ("adv_reveal_details", "SHOWCASE_DESTINATION"),
+    ("adv_spotlights", "CREATIVE_HIGHLIGHTING"),
+    # Other / video / translation / catalog
     ("adv_text_overlay_translation", "TEXT_OVERLAY_TRANSLATION"),
-    # Catalog-only (require an ad connected to a product catalog, else error)
+    ("adv_ig_video_subtitle", "IG_VIDEO_NATIVE_SUBTITLE"),
+    ("adv_profile_card", "PROFILE_CARD"),
     ("adv_product_browsing", "PRODUCT_BROWSING"),
     ("adv_product_metadata", "PRODUCT_METADATA_AUTOMATION"),
     ("adv_catalog_enhancements", "STANDARD_ENHANCEMENTS_CATALOG"),
 ]
+
+# Subset of feature keys the Marketing API currently accepts in
+# degrees_of_freedom_spec.creative_features_spec. Keys not in this set
+# are skipped at upload time even if the user set the column.
+ADVANTAGE_FEATURE_API_SUPPORTED = {
+    "IG_VIDEO_NATIVE_SUBTITLE",
+    "IMAGE_ANIMATION",
+    "PROFILE_CARD",
+    "TEXT_OVERLAY_TRANSLATION",
+    "PRODUCT_BROWSING",
+    "PRODUCT_METADATA_AUTOMATION",
+    "STANDARD_ENHANCEMENTS_CATALOG",
+}
 
 CTAS = [
     "SHOP_NOW",

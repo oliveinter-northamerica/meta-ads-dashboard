@@ -138,9 +138,9 @@ Same flow without the browser:
 | `conversion_domain` | optional | The domain conversions are attributed to (e.g. `example.com`). Recommended for `OUTCOME_SALES`. |
 | `advantage_plus_creative` | optional | **Master switch** for Advantage+ creative. Dropdown: blank (Meta's account default), `ON`, `OFF`. Sets a baseline for `IG_VIDEO_NATIVE_SUBTITLE`, `IMAGE_ANIMATION`, and `TEXT_OVERLAY_TRANSLATION`. The per-feature columns below override this baseline for specific features. |
 
-**Per-feature columns**: dropdown is blank (don't touch) / `ON` / `OFF`. This is the **complete** set Meta currently exposes via the Marketing API. Other Ads Manager toggles (Add overlays, Visual touch-ups, Add music, Text improvements, Enhance CTA, Relevant comments, Adjust brightness/contrast, Reveal details over time, Show spotlights, Add product tags) are **UI-only** — Meta hasn't exposed them in the API; configure those manually in Ads Manager after upload.
+**Per-feature columns**: dropdown is blank (don't touch) / `ON` / `OFF`. The template carries a column for every toggle visible in Ads Manager's Advantage+ creative section. At upload time the script only forwards the ones Meta currently exposes via the Marketing API; the rest are silently skipped with a one-line note like `Note: 3 adv_* setting(s) skipped (UI-only, not exposed in Marketing API): adv_music, adv_enhance_cta, adv_brightness_contrast. Configure manually in Ads Manager after upload.`
 
-Universal (work on most ads):
+Forwarded to the API (Universal — work on most ads):
 | Column | API key | UI label |
 | --- | --- | --- |
 | `adv_ig_video_subtitle` | `IG_VIDEO_NATIVE_SUBTITLE` | IG auto-subtitles (video only) |
@@ -148,12 +148,26 @@ Universal (work on most ads):
 | `adv_profile_card` | `PROFILE_CARD` | Profile card |
 | `adv_text_overlay_translation` | `TEXT_OVERLAY_TRANSLATION` | Translate text overlays |
 
-Catalog-only (only valid on ads connected to a product catalog — error otherwise):
+Forwarded to the API (Catalog-only — only valid on ads connected to a product catalog):
 | Column | API key | UI label |
 | --- | --- | --- |
 | `adv_product_browsing` | `PRODUCT_BROWSING` | Product browsing |
 | `adv_product_metadata` | `PRODUCT_METADATA_AUTOMATION` | Product metadata automation |
 | `adv_catalog_enhancements` | `STANDARD_ENHANCEMENTS_CATALOG` | Standard enhancements (catalog) |
+
+UI-only — silently skipped at upload, configure manually in Ads Manager:
+| Column | UI label |
+| --- | --- |
+| `adv_add_overlays` | Add overlays |
+| `adv_image_touchups` | Visual touch-ups |
+| `adv_music` | Add music |
+| `adv_text_generation` | Text improvements / Advantage+ creative text generation |
+| `adv_product_tags` | Add product tags |
+| `adv_relevant_comments` | Relevant comments |
+| `adv_enhance_cta` | Enhance CTA |
+| `adv_brightness_contrast` | Adjust brightness and contrast |
+| `adv_reveal_details` | Reveal details over time |
+| `adv_spotlights` | Show spotlights |
 
 ### Label + ID in the same cell
 
