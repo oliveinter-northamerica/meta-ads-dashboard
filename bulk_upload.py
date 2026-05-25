@@ -602,14 +602,66 @@ def _cleanup(created, account, protected_ids=()):
             print(f"  Failed to clean up {kind} {obj_id}: {exc}")
 
 
+def _build_campaign_index(account):
+    """One-time fetch of all live (non-deleted, non-archived) campaigns in
+    the ad account. Returns {name: [campaign_id, ...]} so name-based
+    lookups in this run are O(1) and don't hit Meta again."""
+    campaigns = account.get_campaigns(
+        fields=[Campaign.Field.id, Campaign.Field.name, "effective_status"],
+        params={"limit": 1000},
+    )
+    index = {}
+    for c in campaigns:
+        if c.get("effective_status") in ("DELETED", "ARCHIVED"):
+            continue
+        index.setdefault(c["name"], []).append(c["id"])
+    return index
+
+
+def _find_adset_in_campaign(campaign_id, name):
+    """Look for an ad set named `name` within an existing campaign.
+    Returns the ID if exactly one live match, None if no match. Exits
+    with a disambiguation message on 2+ matches."""
+    from facebook_business.adobjects.campaign import Campaign as CampaignObj
+
+    adsets = CampaignObj(campaign_id).get_ad_sets(
+        fields=[AdSet.Field.id, AdSet.Field.name, "effective_status"],
+        params={"limit": 1000},
+    )
+    matches = [
+        a["id"] for a in adsets
+        if a["name"] == name and a.get("effective_status") not in ("DELETED", "ARCHIVED")
+    ]
+    if len(matches) > 1:
+        sys.exit(
+            f"Found {len(matches)} ad sets named {name!r} in campaign {campaign_id}: "
+            f"{', '.join(matches)}. Specify which one in existing_adset_id to disambiguate."
+        )
+    return matches[0] if matches else None
+
+
 def upload(account, tree, campaign_meta, adset_meta, dry_run):
     results = []
     created = []
     protected_ids = set()
+    # One-time campaign index for name-based auto-reuse. Empty in dry-run
+    # since dry-run shouldn't hit Meta.
+    campaign_index = _build_campaign_index(account) if (account and not dry_run) else {}
     try:
         for c_name, adsets in tree.items():
             cm = campaign_meta[c_name]
             existing_campaign = _get(cm, "existing_campaign_id")
+            # Auto-lookup by name if existing_campaign_id is blank.
+            if not existing_campaign and c_name in campaign_index:
+                matches = campaign_index[c_name]
+                if len(matches) > 1:
+                    sys.exit(
+                        f"Found {len(matches)} campaigns named {c_name!r}: "
+                        f"{', '.join(matches)}. Specify which one in "
+                        "existing_campaign_id to disambiguate."
+                    )
+                existing_campaign = matches[0]
+                print(f"Found existing campaign by name {c_name!r}: {existing_campaign}")
             if existing_campaign:
                 campaign_id = existing_campaign
                 protected_ids.add(campaign_id)
@@ -628,6 +680,14 @@ def upload(account, tree, campaign_meta, adset_meta, dry_run):
             for a_name, ads in adsets.items():
                 am = adset_meta[(c_name, a_name)]
                 existing_adset = _get(am, "existing_adset_id")
+                # Auto-lookup ad set by name within this campaign. Only
+                # meaningful when the campaign already exists in Meta (a
+                # campaign just created can't have ad sets in it yet).
+                if not existing_adset and existing_campaign and not dry_run:
+                    matched = _find_adset_in_campaign(campaign_id, a_name)
+                    if matched:
+                        existing_adset = matched
+                        print(f"  Found existing ad set by name {a_name!r}: {existing_adset}")
                 if existing_adset:
                     adset_id = existing_adset
                     protected_ids.add(adset_id)
