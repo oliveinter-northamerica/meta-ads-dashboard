@@ -73,9 +73,16 @@
   </div>
 
   <div class="step">
-    <h2><span class="step-num">2</span> Upload your filled spreadsheet</h2>
+    <h2><span class="step-num">2</span> Provide your filled spreadsheet</h2>
     <div class="field">
-      <input type="file" name="file" accept=".csv,.xlsx" required>
+      <label>Google Sheets URL</label>
+      <input type="text" name="sheet_url" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0">
+      <div class="help">Paste your Google Sheets URL. The sheet must be shared with <strong>Anyone with the link → Viewer</strong> (Share button top-right of the sheet). The <code>gid</code> in the URL picks the specific tab.</div>
+    </div>
+    <div style="text-align:center; color:#57606a; margin:0.6em 0; font-size:0.85em;">— or —</div>
+    <div class="field">
+      <label>Upload file</label>
+      <input type="file" name="file" accept=".csv,.xlsx">
       <div class="help">Accepts <code>.xlsx</code> or <code>.csv</code>. Rows sharing a <code>campaign_name</code> become one campaign; same <code>campaign_name</code> + <code>adset_name</code> become one ad set.</div>
     </div>
   </div>

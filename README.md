@@ -12,6 +12,22 @@ export META_ACCESS_TOKEN=...        # token with ads_management scope
 export META_AD_ACCOUNT_ID=act_...   # ad account ID, with the act_ prefix
 ```
 
+## Usage — Google Sheets (no file download)
+
+Skip the download/upload round-trip — keep everything in a Google Sheet:
+
+1. Copy `template.xlsx` into Google Sheets (File → Import in Sheets, or just paste the headers from `template.csv`).
+2. Fill rows.
+3. Click **Share** (top-right) → switch access to **Anyone with the link → Viewer**.
+4. Copy the URL (something like `https://docs.google.com/spreadsheets/d/SHEET_ID/edit#gid=0`).
+5. Paste it into the **Google Sheets URL** field in the web UI, or pass it to the CLI:
+   ```bash
+   python bulk_upload.py "https://docs.google.com/spreadsheets/d/SHEET_ID/edit#gid=0"
+   ```
+6. Same dry-run / live behavior as a file upload. The `gid` in the URL selects the tab.
+
+The sheet must be shared publicly with link-viewer access because the script reads it via Google's public CSV export endpoint (no OAuth). If you need to keep the sheet private, fall back to downloading as XLSX/CSV and uploading the file.
+
 ## Usage — Web UI (recommended)
 
 ```bash

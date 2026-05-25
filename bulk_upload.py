@@ -241,6 +241,51 @@ def _normalize_ids(row):
             row[col] = ",".join(_extract_id(p) for p in row[col].split(",") if p.strip())
 
 
+def _parse_sheet_url(url_or_id):
+    """Extract (sheet_id, gid) from a Google Sheets URL. Falls back to
+    treating the input as a bare sheet_id with gid=0 if it doesn't look
+    like a URL."""
+    m = re.search(r"/spreadsheets/d/([A-Za-z0-9_-]+)", url_or_id)
+    sheet_id = m.group(1) if m else url_or_id.strip()
+    gid_m = re.search(r"[?&#]gid=(\d+)", url_or_id)
+    gid = gid_m.group(1) if gid_m else "0"
+    return sheet_id, gid
+
+
+def load_rows_from_sheet(url_or_id):
+    """Fetch a Google Sheet as CSV and parse it. Sheet must be shared
+    with 'Anyone with the link → Viewer' so the public export endpoint
+    can read it without OAuth."""
+    import io
+
+    sheet_id, gid = _parse_sheet_url(url_or_id)
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+    req = urllib.request.Request(csv_url, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            ctype = resp.headers.get("Content-Type", "")
+            data = resp.read()
+    except urllib.error.HTTPError as exc:
+        sys.exit(
+            f"Failed to fetch Google Sheet (HTTP {exc.code}). The sheet must be "
+            "shared with 'Anyone with the link → Viewer' so this script can read "
+            "it without OAuth. Open the sheet, click 'Share' top-right, switch "
+            "access to that, then retry."
+        )
+    if "text/csv" not in ctype.lower():
+        sys.exit(
+            f"Google Sheets returned {ctype!r} instead of CSV — the sheet "
+            "probably isn't publicly shared. Click 'Share' top-right and switch "
+            "access to 'Anyone with the link → Viewer'."
+        )
+    rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig"))))
+    if not rows:
+        sys.exit(f"Google Sheet {sheet_id} (gid={gid}) has no data rows.")
+    for row in rows:
+        _normalize_ids(row)
+    return rows
+
+
 def load_rows(path):
     if path.lower().endswith(".xlsx"):
         from openpyxl import load_workbook
@@ -798,11 +843,14 @@ def upload(account, tree, campaign_meta, adset_meta, dry_run):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("csv_path")
+    p.add_argument("source", help="Path to a .csv / .xlsx file, OR a Google Sheets URL (sheet must be shared 'Anyone with the link → Viewer')")
     p.add_argument("--dry-run", action="store_true", help="Print payloads without calling the API")
     args = p.parse_args()
 
-    rows = load_rows(args.csv_path)
+    if args.source.startswith("http") or "docs.google.com" in args.source:
+        rows = load_rows_from_sheet(args.source)
+    else:
+        rows = load_rows(args.source)
     tree, campaign_meta, adset_meta = group(rows)
 
     account = None

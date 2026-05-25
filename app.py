@@ -16,7 +16,7 @@ from flask import Flask, render_template, request, send_file
 from facebook_business.adobjects.adaccount import AdAccount
 from facebook_business.api import FacebookAdsApi
 
-from bulk_upload import group, load_rows, upload
+from bulk_upload import group, load_rows, load_rows_from_sheet, upload
 from generate_template import build as build_template
 
 app = Flask(__name__)
@@ -44,22 +44,27 @@ def upload_route():
     token = request.form.get("token", "").strip()
     account_id = request.form.get("account_id", "").strip()
     dry_run = "dry_run" in request.form
-
+    sheet_url = request.form.get("sheet_url", "").strip()
     f = request.files.get("file")
-    if not f or not f.filename:
-        return render_template("result.html", error="Please choose a CSV or XLSX file.")
 
-    suffix = ".xlsx" if f.filename.lower().endswith(".xlsx") else ".csv"
-    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-    f.save(tmp.name)
-    tmp.close()
-
-    try:
-        rows = load_rows(tmp.name)
-    except SystemExit as exc:
-        return render_template("result.html", error=str(exc))
-    finally:
-        os.unlink(tmp.name)
+    if sheet_url:
+        try:
+            rows = load_rows_from_sheet(sheet_url)
+        except SystemExit as exc:
+            return render_template("result.html", error=str(exc))
+    elif f and f.filename:
+        suffix = ".xlsx" if f.filename.lower().endswith(".xlsx") else ".csv"
+        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+        f.save(tmp.name)
+        tmp.close()
+        try:
+            rows = load_rows(tmp.name)
+        except SystemExit as exc:
+            return render_template("result.html", error=str(exc))
+        finally:
+            os.unlink(tmp.name)
+    else:
+        return render_template("result.html", error="Provide either a Google Sheets URL or a CSV/XLSX file.")
 
     if not dry_run and (not token or not account_id):
         return render_template("result.html", error="Token and ad account ID are required for a live upload.")
