@@ -101,6 +101,10 @@ GENDERS = ["", "1", "2", "1,2"]
 # CALL and WHATSAPP also require phone_number to be filled.
 BROWSER_ADDONS = ["", "NONE", "CALL", "MESSENGER", "WHATSAPP"]
 
+# Partnership Ad — which identity (or both) shows in the ad's header.
+# Mirrors Ads Manager's "Identities to display in the header" radio.
+IDENTITY_DISPLAY = ["", "DYNAMIC", "BOTH", "FIRST_ONLY"]
+
 # Master switch for Meta's Advantage+ creative enhancements. ON / OFF /
 # blank (leave at Meta's account default). Script translates to
 # enroll_status OPT_IN / OPT_OUT before sending to Meta.
@@ -209,8 +213,9 @@ COLUMNS = [
     ("ad_name", None),
     ("existing_post_id", None),
     ("partnership_ad_code", None),
-    ("branded_content_sponsor_page_id", None),
-    ("branded_content_sponsor_ig_id", None),
+    ("second_identity_page_id", None),
+    ("second_identity_ig_id", None),
+    ("identity_display", IDENTITY_DISPLAY),
     ("image_url", None),
     ("video_id", None),
     ("video_url", None),

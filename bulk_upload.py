@@ -438,15 +438,22 @@ def build_creative_spec(row, account=None, dry_run=False):
         if cta and cta != "NO_BUTTON" and link_url:
             spec["call_to_action"] = {"type": cta, "value": {"link": link_url}}
 
-        # Partnership Ads identity overrides — only relevant when partnership
-        # _ad_code is set (your Page is the sponsor of the partner's post).
+        # Partnership Ads "Second identity" — Ads Manager's "Second identity"
+        # block (Page + IG of the sponsor). Defaults to the row's page_id /
+        # instagram_user_id if the dedicated second_identity_* fields are
+        # blank.
         if partnership_code:
-            sponsor_page = _get(row, "branded_content_sponsor_page_id") or row.get("page_id")
-            if sponsor_page:
-                spec["branded_content_sharing_partner_id"] = sponsor_page
-            sponsor_ig = _get(row, "branded_content_sponsor_ig_id") or _get(row, "instagram_user_id")
-            if sponsor_ig:
-                spec["instagram_user_id"] = sponsor_ig
+            second_page = _get(row, "second_identity_page_id") or row.get("page_id")
+            if second_page:
+                spec["branded_content_sharing_partner_id"] = second_page
+            second_ig = _get(row, "second_identity_ig_id") or _get(row, "instagram_user_id")
+            if second_ig:
+                spec["instagram_user_id"] = second_ig
+            # "Identities to display in the header" radio. API field name
+            # is a best-guess based on Meta's UI labels.
+            display = _get(row, "identity_display").upper()
+            if display:
+                spec["branded_content_identity_display"] = display
 
         url_tags = _get(row, "url_tags")
         if url_tags:
