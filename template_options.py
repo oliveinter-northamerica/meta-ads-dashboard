@@ -207,6 +207,8 @@ COLUMNS = [
     ("instagram_user_id", None),
     ("threads_user_id", None),
     ("ad_name", None),
+    ("existing_post_id", None),
+    ("partnership_ad_code", None),
     ("image_url", None),
     ("video_id", None),
     ("video_url", None),

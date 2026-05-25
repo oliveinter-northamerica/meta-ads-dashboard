@@ -381,7 +381,59 @@ def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, exist
     return params
 
 
+def _apply_advantage_features(spec, row):
+    from template_options import ADVANTAGE_FEATURE_COLUMNS
+
+    def enroll(val):
+        v = (val or "").strip().upper()
+        return "OPT_IN" if v == "ON" else "OPT_OUT" if v == "OFF" else None
+
+    features_spec = {}
+    master = enroll(row.get("advantage_plus_creative"))
+    if master:
+        # Broad master-switch baseline — applies to both image and video
+        # ads regardless of catalog use. Per-feature columns override.
+        for f in ("IG_VIDEO_NATIVE_SUBTITLE", "IMAGE_ANIMATION", "TEXT_OVERLAY_TRANSLATION"):
+            features_spec[f] = {"enroll_status": master}
+    for col, api_key in ADVANTAGE_FEATURE_COLUMNS:
+        per_feature = enroll(row.get(col))
+        if per_feature:
+            features_spec[api_key] = {"enroll_status": per_feature}
+    if features_spec:
+        spec["degrees_of_freedom_spec"] = {"creative_features_spec": features_spec}
+
+
 def build_creative_spec(row, account=None, dry_run=False):
+    existing_post = _get(row, "existing_post_id")
+    partnership_code = _get(row, "partnership_ad_code")
+    if existing_post and partnership_code:
+        sys.exit(f"Ad {row.get('ad_name')!r}: set existing_post_id OR partnership_ad_code, not both.")
+
+    # Promote an existing post (your own Page) or run a partner's post via
+    # their shared ad code. Both paths use object_story_id and ignore all
+    # the creative-content columns (image_url, headline, primary_text, …)
+    # because the post already has its content baked in.
+    if existing_post or partnership_code:
+        if partnership_code:
+            if "_" not in partnership_code:
+                sys.exit(
+                    f"Ad {row.get('ad_name')!r}: partnership_ad_code must be the full "
+                    "PARTNER_PAGE_ID_POST_ID format (with underscore) — the partner's "
+                    "Page ID is required since it's not your own Page."
+                )
+            object_story_id = partnership_code
+        else:
+            object_story_id = existing_post if "_" in existing_post else f"{row['page_id']}_{existing_post}"
+        spec = {
+            "name": f"Creative - {row['ad_name']}",
+            "object_story_id": object_story_id,
+        }
+        url_tags = _get(row, "url_tags")
+        if url_tags:
+            spec["url_tags"] = url_tags
+        _apply_advantage_features(spec, row)
+        return spec
+
     video_id = _get(row, "video_id")
     video_url = convert_drive_url(_get(row, "video_url"))
     image_url = convert_drive_url(_get(row, "image_url"))
@@ -437,28 +489,7 @@ def build_creative_spec(row, account=None, dry_run=False):
     url_tags = _get(row, "url_tags")
     if url_tags:
         spec["url_tags"] = url_tags
-
-    from template_options import ADVANTAGE_FEATURE_COLUMNS
-
-    def _enroll(val):
-        v = (val or "").strip().upper()
-        return "OPT_IN" if v == "ON" else "OPT_OUT" if v == "OFF" else None
-
-    features_spec = {}
-    master = _enroll(row.get("advantage_plus_creative"))
-    if master:
-        # Broad master-switch baseline — applies to both image and video
-        # ads regardless of catalog use. Per-feature columns override.
-        for f in ("IG_VIDEO_NATIVE_SUBTITLE", "IMAGE_ANIMATION", "TEXT_OVERLAY_TRANSLATION"):
-            features_spec[f] = {"enroll_status": master}
-
-    for col, api_key in ADVANTAGE_FEATURE_COLUMNS:
-        per_feature = _enroll(row.get(col))
-        if per_feature:
-            features_spec[api_key] = {"enroll_status": per_feature}
-
-    if features_spec:
-        spec["degrees_of_freedom_spec"] = {"creative_features_spec": features_spec}
+    _apply_advantage_features(spec, row)
     return spec
 
 

@@ -39,6 +39,8 @@ SAMPLE_ROW = {
     "age_max": 54,
     "page_id": "1234567890",
     "ad_name": "My First Ad",
+    "existing_post_id": "",
+    "partnership_ad_code": "",
     "image_url": "https://example.com/image.jpg",
     "primary_text": "Body copy goes here.",
     "headline": "Your headline",
