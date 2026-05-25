@@ -92,6 +92,7 @@ def upload_route():
         dry_run=dry_run,
         error=error,
         row_count=len(rows),
+        account_id=account_id,
     )
 
 

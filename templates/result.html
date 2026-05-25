@@ -8,7 +8,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       max-width: 900px; margin: 3em auto; padding: 0 1.5em;
-      color: #1f2328;
+      color: #1f2328; background: #fff;
     }
     h1 { font-size: 1.4em; margin-bottom: 0.5em; }
     .banner { padding: 1.2em 1.4em; border-radius: 8px; margin-bottom: 1.5em; }
@@ -18,13 +18,50 @@
     .banner h2 { margin: 0 0 0.4em; font-size: 1.1em; }
     .banner p { margin: 0; font-size: 0.95em; }
     .banner a { color: #0969da; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; font-size: 0.9em; }
-    th, td { text-align: left; padding: 0.6em 0.8em; border-bottom: 1px solid #d0d7de; }
-    th { background: #f6f8fa; font-weight: 600; }
-    td code { background: #f6f8fa; padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.85em; }
-    details { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8em 1em; margin-bottom: 1.5em; }
-    summary { cursor: pointer; font-weight: 500; }
-    pre { background: #1f2328; color: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; font-size: 0.8em; margin-top: 0.8em; }
+
+    .campaign-block {
+      border: 1px solid #d0d7de; border-radius: 8px;
+      margin-bottom: 1.2em; overflow: hidden;
+    }
+    .campaign-head {
+      background: #f6f8fa; padding: 0.9em 1.2em;
+      border-bottom: 1px solid #d0d7de;
+      display: flex; align-items: center; gap: 0.6em; flex-wrap: wrap;
+    }
+    .campaign-head .icon { color: #57606a; font-size: 0.9em; }
+    .campaign-head .name { font-weight: 600; font-size: 1em; }
+    .campaign-head .id   { color: #57606a; font-size: 0.82em; font-family: ui-monospace, monospace; }
+
+    .adset-block { padding: 0.4em 1.2em 0.4em 2em; border-bottom: 1px solid #eaecef; }
+    .adset-block:last-child { border-bottom: 0; }
+    .adset-head {
+      padding: 0.6em 0; display: flex; align-items: center; gap: 0.6em; flex-wrap: wrap;
+    }
+    .adset-head .icon { color: #57606a; font-size: 0.82em; }
+    .adset-head .name { font-weight: 500; font-size: 0.92em; }
+    .adset-head .id   { color: #57606a; font-size: 0.78em; font-family: ui-monospace, monospace; }
+
+    .ad-row {
+      padding: 0.55em 0 0.55em 1.5em;
+      display: flex; align-items: center; gap: 0.8em; flex-wrap: wrap;
+      border-top: 1px dashed #eaecef;
+    }
+    .ad-row:first-of-type { border-top: 0; }
+    .ad-row .pill {
+      background: #fff8c5; color: #7a4a00; border: 1px solid #d4a72c;
+      font-size: 0.7em; padding: 0.1em 0.5em; border-radius: 999px; font-weight: 600;
+    }
+    .ad-row .name { flex: 1; min-width: 200px; font-size: 0.9em; }
+    .ad-row .id   { color: #57606a; font-size: 0.78em; font-family: ui-monospace, monospace; }
+    .ad-row a {
+      color: #0969da; text-decoration: none; font-size: 0.85em;
+      border: 1px solid #d0d7de; padding: 0.2em 0.6em; border-radius: 4px;
+    }
+    .ad-row a:hover { background: #f6f8fa; }
+
+    details { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8em 1em; margin: 1.5em 0; }
+    summary { cursor: pointer; font-weight: 500; font-size: 0.92em; }
+    pre { background: #1f2328; color: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; font-size: 0.78em; margin-top: 0.8em; white-space: pre-wrap; }
     .back {
       display: inline-block; background: #f6f8fa;
       border: 1px solid #d0d7de; border-radius: 6px;
@@ -49,30 +86,62 @@
 {% else %}
   <div class="banner success">
     <h2>Created {{ results|length }} ad(s) · all PAUSED</h2>
-    <p>Review and activate in <a href="https://adsmanager.facebook.com" target="_blank">Ads Manager</a>.</p>
+    <p>Click any ad to open it in <a href="https://adsmanager.facebook.com" target="_blank">Ads Manager</a> for review and activation.</p>
   </div>
+{% endif %}
 
-  {% if results %}
-  <table>
-    <thead>
-      <tr><th>Ad name</th><th>Campaign ID</th><th>Ad set ID</th><th>Ad ID</th></tr>
-    </thead>
-    <tbody>
-      {% for r in results %}
-      <tr>
-        <td>{{ r.name }}</td>
-        <td><code>{{ r.campaign }}</code></td>
-        <td><code>{{ r.adset }}</code></td>
-        <td><code>{{ r.ad }}</code></td>
-      </tr>
+{% if results and not error %}
+  {% set grouped = {} %}
+  {% for r in results %}
+    {% set key = (r.campaign, r.adset) %}
+    {% if grouped.update({key: grouped.get(key, []) + [r]}) %}{% endif %}
+  {% endfor %}
+  {% set campaign_order = [] %}
+  {% for r in results %}
+    {% if r.campaign not in campaign_order %}
+      {% if campaign_order.append(r.campaign) %}{% endif %}
+    {% endif %}
+  {% endfor %}
+  {% set _account = account_id or '' %}
+  {% set deeplink_root = "https://adsmanager.facebook.com/adsmanager/manage/ads?act=" ~ _account.replace('act_', '') %}
+
+  {% for campaign_id in campaign_order %}
+    <div class="campaign-block">
+      <div class="campaign-head">
+        <span class="icon">📁 Campaign</span>
+        <span class="name">{{ campaign_id }}</span>
+        {% if not campaign_id.startswith('DRY_') %}
+          <a href="{{ deeplink_root }}&selected_campaign_ids={{ campaign_id }}" target="_blank" style="margin-left:auto; font-size:0.82em; color:#0969da;">Open in Ads Manager →</a>
+        {% endif %}
+      </div>
+      {% set adset_seen = [] %}
+      {% for r in results if r.campaign == campaign_id %}
+        {% if r.adset not in adset_seen %}
+          {% if adset_seen.append(r.adset) %}{% endif %}
+          <div class="adset-block">
+            <div class="adset-head">
+              <span class="icon">📂 Ad set</span>
+              <span class="id">{{ r.adset }}</span>
+            </div>
+            {% for ad in results if ad.campaign == campaign_id and ad.adset == r.adset %}
+              <div class="ad-row">
+                <span class="pill">PAUSED</span>
+                <span class="name">{{ ad.name }}</span>
+                <span class="id">{{ ad.ad }}</span>
+                {% if not ad.ad.startswith('DRY_') %}
+                  <a href="{{ deeplink_root }}&selected_ad_ids={{ ad.ad }}" target="_blank">Open ad</a>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
       {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
+    </div>
+  {% endfor %}
 {% endif %}
 
 {% if log %}
-<details {% if dry_run %}open{% endif %}>
+<details {% if dry_run or error %}open{% endif %}>
   <summary>Output log</summary>
   <pre>{{ log }}</pre>
 </details>

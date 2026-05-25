@@ -91,13 +91,16 @@
     <h2><span class="step-num">3</span> Meta credentials</h2>
     <div class="field">
       <label>Access token</label>
-      <input type="password" name="token" value="{{ default_token }}" placeholder="EAAB...">
-      <div class="help">Generate at <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Graph API Explorer</a> with <code>ads_management</code> scope.</div>
+      <input type="password" name="token" id="token" value="{{ default_token }}" placeholder="EAAB...">
+      <div class="help">Generate at <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Graph API Explorer</a> with <code>ads_management</code> scope. Saved locally in your browser so you don't have to paste again.</div>
     </div>
     <div class="field">
       <label>Ad account ID</label>
-      <input type="text" name="account_id" value="{{ default_account }}" placeholder="act_1234567890">
+      <input type="text" name="account_id" id="account_id" value="{{ default_account }}" placeholder="act_1234567890">
       <div class="help">Top-left account dropdown in Ads Manager. Include the <code>act_</code> prefix.</div>
+    </div>
+    <div style="text-align:right; margin-top:0.6em;">
+      <button type="button" id="clear-saved" style="background:none; border:0; color:#0969da; cursor:pointer; font-size:0.82em; padding:0; text-decoration:underline;">Clear saved credentials</button>
     </div>
   </div>
 
@@ -110,6 +113,47 @@
 
   <button type="submit" class="submit">Upload</button>
 </form>
+
+<script>
+(function () {
+  const KEY_TOKEN = "meta_uploader_token";
+  const KEY_ACCOUNT = "meta_uploader_account";
+  const tokenEl = document.getElementById("token");
+  const accountEl = document.getElementById("account_id");
+  const clearBtn = document.getElementById("clear-saved");
+
+  // Restore on load — only if the server didn't already pre-fill from env vars.
+  try {
+    if (!tokenEl.value) {
+      const t = localStorage.getItem(KEY_TOKEN);
+      if (t) tokenEl.value = t;
+    }
+    if (!accountEl.value) {
+      const a = localStorage.getItem(KEY_ACCOUNT);
+      if (a) accountEl.value = a;
+    }
+  } catch (e) { /* localStorage blocked — silently fall back to manual paste */ }
+
+  // Save on submit.
+  document.querySelector("form").addEventListener("submit", function () {
+    try {
+      if (tokenEl.value) localStorage.setItem(KEY_TOKEN, tokenEl.value);
+      if (accountEl.value) localStorage.setItem(KEY_ACCOUNT, accountEl.value);
+    } catch (e) { /* ignore */ }
+  });
+
+  clearBtn.addEventListener("click", function () {
+    try {
+      localStorage.removeItem(KEY_TOKEN);
+      localStorage.removeItem(KEY_ACCOUNT);
+    } catch (e) { /* ignore */ }
+    tokenEl.value = "";
+    accountEl.value = "";
+    clearBtn.textContent = "Cleared";
+    setTimeout(() => { clearBtn.textContent = "Clear saved credentials"; }, 1500);
+  });
+})();
+</script>
 
 </body>
 </html>
