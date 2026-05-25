@@ -115,27 +115,23 @@ ADVANTAGE_PLUS_CREATIVE = ["", "ON", "OFF"]
 ENROLL_STATUS = ["", "ON", "OFF"]
 
 # Maps each adv_* template column to the uppercase API feature key Meta
-# accepts in degrees_of_freedom_spec.creative_features_spec. Some keys
-# (marked *) are best-guesses from the Ads Manager UI labels and may need
-# adjusting if Meta rejects them.
+# accepts in degrees_of_freedom_spec.creative_features_spec. This is the
+# *complete* set Meta currently exposes via the Marketing API. Other
+# toggles visible in Ads Manager's UI (Add overlays, Add music, Text
+# improvements, Visual touch-ups, Enhance CTA, Relevant comments,
+# Adjust brightness/contrast, Reveal details over time, Show spotlights)
+# are NOT exposed via the API — they can only be configured manually in
+# Ads Manager after upload.
 ADVANTAGE_FEATURE_COLUMNS = [
-    # Advantage+ creative enhancements (opt-in)
-    ("adv_add_overlays", "ADD_TEXT_OVERLAY"),                # * Add overlays
-    ("adv_image_touchups", "IMAGE_TOUCHUPS"),                # Visual touch-ups
-    ("adv_music", "MUSIC"),                                  # Add music
-    ("adv_text_generation", "TEXT_GENERATION"),              # Text improvements
-    ("adv_image_animation", "IMAGE_ANIMATION"),              # Add animation
-    ("adv_product_tags", "PRODUCT_TAGS"),                    # * Add product tags
-    # Essential enhancements (mostly on by default)
-    ("adv_relevant_comments", "RELEVANT_COMMENTS"),          # Relevant comments
-    ("adv_enhance_cta", "CTA_ENHANCEMENT"),                  # Enhance CTA
-    ("adv_brightness_contrast", "IMAGE_BRIGHTNESS_AND_CONTRAST"),  # Adjust brightness
-    ("adv_reveal_details", "SHOWCASE_DESTINATION"),          # * Reveal details over time
-    ("adv_spotlights", "CREATIVE_HIGHLIGHTING"),             # * Show spotlights
-    # Other / video / translation
-    ("adv_text_overlay_translation", "TEXT_OVERLAY_TRANSLATION"),
+    # Universal (work on most ads)
     ("adv_ig_video_subtitle", "IG_VIDEO_NATIVE_SUBTITLE"),
+    ("adv_image_animation", "IMAGE_ANIMATION"),
     ("adv_profile_card", "PROFILE_CARD"),
+    ("adv_text_overlay_translation", "TEXT_OVERLAY_TRANSLATION"),
+    # Catalog-only (require an ad connected to a product catalog, else error)
+    ("adv_product_browsing", "PRODUCT_BROWSING"),
+    ("adv_product_metadata", "PRODUCT_METADATA_AUTOMATION"),
+    ("adv_catalog_enhancements", "STANDARD_ENHANCEMENTS_CATALOG"),
 ]
 
 CTAS = [

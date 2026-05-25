@@ -579,7 +579,8 @@ def _build_asset_feed_creative(row, image_url, video_id, cta_obj, display_link, 
 
 def _cleanup(created, account, protected_ids=()):
     """On failure, delete entities we created during this run so the user
-    doesn't have to manually clean up orphan campaigns / ad sets / ads.
+    doesn't have to manually clean up orphan campaigns / ad sets / ads /
+    creatives.
 
     `protected_ids` lists entity IDs the user referenced via
     existing_campaign_id / existing_adset_id. They are pre-existing and we
@@ -597,6 +598,8 @@ def _cleanup(created, account, protected_ids=()):
                 AdSet(obj_id).api_delete()
             elif kind == "campaign":
                 Campaign(obj_id).api_delete()
+            elif kind == "creative":
+                AdCreative(obj_id).api_delete()
             print(f"  Cleaned up {kind} {obj_id}")
         except Exception as exc:
             print(f"  Failed to clean up {kind} {obj_id}: {exc}")
@@ -711,6 +714,7 @@ def upload(account, tree, campaign_meta, adset_meta, dry_run):
                     else:
                         creative = account.create_ad_creative(params=creative_spec)
                         creative_id = creative["id"]
+                        created.append(("creative", creative_id))
 
                     ad_params = {
                         Ad.Field.name: ad_row["ad_name"],

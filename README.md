@@ -138,35 +138,22 @@ Same flow without the browser:
 | `conversion_domain` | optional | The domain conversions are attributed to (e.g. `example.com`). Recommended for `OUTCOME_SALES`. |
 | `advantage_plus_creative` | optional | **Master switch** for Advantage+ creative. Dropdown: blank (Meta's account default), `ON`, `OFF`. Sets a baseline for `IG_VIDEO_NATIVE_SUBTITLE`, `IMAGE_ANIMATION`, and `TEXT_OVERLAY_TRANSLATION`. The per-feature columns below override this baseline for specific features. |
 
-**Per-feature columns**: dropdown is blank (don't touch) / `ON` / `OFF`. The Ads Manager UI label is shown alongside each. Items marked **\*** are best-guess API key names (the UI label is documented but the API key isn't) — Meta will return a clear `must be one of {...}` error if the guess is wrong, at which point tell me which one and I'll adjust.
+**Per-feature columns**: dropdown is blank (don't touch) / `ON` / `OFF`. This is the **complete** set Meta currently exposes via the Marketing API. Other Ads Manager toggles (Add overlays, Visual touch-ups, Add music, Text improvements, Enhance CTA, Relevant comments, Adjust brightness/contrast, Reveal details over time, Show spotlights, Add product tags) are **UI-only** — Meta hasn't exposed them in the API; configure those manually in Ads Manager after upload.
 
-Advantage+ creative enhancements (typically opt-in):
+Universal (work on most ads):
 | Column | API key | UI label |
 | --- | --- | --- |
-| `adv_add_overlays` | `ADD_TEXT_OVERLAY` \* | Add overlays |
-| `adv_image_touchups` | `IMAGE_TOUCHUPS` | Visual touch-ups |
-| `adv_music` | `MUSIC` | Add music |
-| `adv_text_generation` | `TEXT_GENERATION` | Text improvements / Advantage+ creative text generation |
-| `adv_image_animation` | `IMAGE_ANIMATION` | Add animation |
-| `adv_product_tags` | `PRODUCT_TAGS` \* | Add product tags (requires a connected product catalog) |
-
-Essential enhancements (mostly on by default in Ads Manager):
-| Column | API key | UI label |
-| --- | --- | --- |
-| `adv_relevant_comments` | `RELEVANT_COMMENTS` | Relevant comments |
-| `adv_enhance_cta` | `CTA_ENHANCEMENT` | Enhance CTA |
-| `adv_brightness_contrast` | `IMAGE_BRIGHTNESS_AND_CONTRAST` | Adjust brightness and contrast |
-| `adv_reveal_details` | `SHOWCASE_DESTINATION` \* | Reveal details over time (destination screenshot) |
-| `adv_spotlights` | `CREATIVE_HIGHLIGHTING` \* | Show spotlights (website highlights) |
-
-Other / video / translation:
-| Column | API key | UI label |
-| --- | --- | --- |
-| `adv_text_overlay_translation` | `TEXT_OVERLAY_TRANSLATION` | Translate text overlays |
 | `adv_ig_video_subtitle` | `IG_VIDEO_NATIVE_SUBTITLE` | IG auto-subtitles (video only) |
+| `adv_image_animation` | `IMAGE_ANIMATION` | Add animation |
 | `adv_profile_card` | `PROFILE_CARD` | Profile card |
+| `adv_text_overlay_translation` | `TEXT_OVERLAY_TRANSLATION` | Translate text overlays |
 
-**Note on Advantage+ creative**: Meta's valid feature set varies by ad type, account, and what's enabled in Business Manager. Catalog-only features (`PRODUCT_TAGS`, `PRODUCT_BROWSING`, `STANDARD_ENHANCEMENTS_CATALOG`, etc.) only work on ads with a connected product catalog. If a column errors, paste the `must be one of {...}` message and we'll trim or rename.
+Catalog-only (only valid on ads connected to a product catalog — error otherwise):
+| Column | API key | UI label |
+| --- | --- | --- |
+| `adv_product_browsing` | `PRODUCT_BROWSING` | Product browsing |
+| `adv_product_metadata` | `PRODUCT_METADATA_AUTOMATION` | Product metadata automation |
+| `adv_catalog_enhancements` | `STANDARD_ENHANCEMENTS_CATALOG` | Standard enhancements (catalog) |
 
 ### Label + ID in the same cell
 
