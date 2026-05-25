@@ -132,15 +132,36 @@ Same flow without the browser:
 | `phone_number` | conditional | Required when `browser_addon` is `CALL` or `WHATSAPP`. For WhatsApp use international format without `+` (e.g. `15551234567`). |
 | `conversion_domain` | optional | The domain conversions are attributed to (e.g. `example.com`). Recommended for `OUTCOME_SALES`. |
 | `advantage_plus_creative` | optional | **Master switch** for Advantage+ creative. Dropdown: blank (Meta's account default), `ENABLED` (opt-in), `DISABLED` (opt-out). Sets a baseline for `IG_VIDEO_NATIVE_SUBTITLE`, `IMAGE_ANIMATION`, and `TEXT_OVERLAY_TRANSLATION`. The per-feature columns below override this baseline for specific features. |
-| `adv_image_animation` | optional | Per-feature toggle: blank / `OPT_IN` / `OPT_OUT`. → API `IMAGE_ANIMATION`. UI: "Image animation" / "Reveal details over time". |
-| `adv_image_touchups` | optional | → API `IMAGE_TOUCHUPS`. UI: "Visual touch-ups" / brightness & contrast. |
-| `adv_text_generation` | optional | → API `TEXT_GENERATION`. UI: "Advantage+ creative text generation". |
-| `adv_text_overlay_translation` | optional | → API `TEXT_OVERLAY_TRANSLATION`. Auto-translates text overlays. |
-| `adv_ig_video_subtitle` | optional | → API `IG_VIDEO_NATIVE_SUBTITLE`. Auto-subtitles on IG video. |
-| `adv_music` | optional | → API `MUSIC`. UI: "Add music". |
-| `adv_profile_card` | optional | → API `PROFILE_CARD`. Profile card overlay. |
 
-**Note on Advantage+ creative**: Meta's set of valid feature keys varies by ad type, account, and what's enabled in Business Manager — and the names change over time. If a column errors with `must be one of {...}`, that error message lists the keys your account currently accepts; tell me the list and I'll adjust. For per-feature control beyond these columns (e.g. catalog-only features like `PRODUCT_BROWSING`), edit in Ads Manager after upload.
+**Per-feature columns**: dropdown is blank (don't touch) / `OPT_IN` / `OPT_OUT`. The Ads Manager UI label is shown alongside each. Items marked **\*** are best-guess API key names (the UI label is documented but the API key isn't) — Meta will return a clear `must be one of {...}` error if the guess is wrong, at which point tell me which one and I'll adjust.
+
+Advantage+ creative enhancements (typically opt-in):
+| Column | API key | UI label |
+| --- | --- | --- |
+| `adv_add_overlays` | `ADD_TEXT_OVERLAY` \* | Add overlays |
+| `adv_image_touchups` | `IMAGE_TOUCHUPS` | Visual touch-ups |
+| `adv_music` | `MUSIC` | Add music |
+| `adv_text_generation` | `TEXT_GENERATION` | Text improvements / Advantage+ creative text generation |
+| `adv_image_animation` | `IMAGE_ANIMATION` | Add animation |
+| `adv_product_tags` | `PRODUCT_TAGS` \* | Add product tags (requires a connected product catalog) |
+
+Essential enhancements (mostly on by default in Ads Manager):
+| Column | API key | UI label |
+| --- | --- | --- |
+| `adv_relevant_comments` | `RELEVANT_COMMENTS` | Relevant comments |
+| `adv_enhance_cta` | `CTA_ENHANCEMENT` | Enhance CTA |
+| `adv_brightness_contrast` | `IMAGE_BRIGHTNESS_AND_CONTRAST` | Adjust brightness and contrast |
+| `adv_reveal_details` | `SHOWCASE_DESTINATION` \* | Reveal details over time (destination screenshot) |
+| `adv_spotlights` | `CREATIVE_HIGHLIGHTING` \* | Show spotlights (website highlights) |
+
+Other / video / translation:
+| Column | API key | UI label |
+| --- | --- | --- |
+| `adv_text_overlay_translation` | `TEXT_OVERLAY_TRANSLATION` | Translate text overlays |
+| `adv_ig_video_subtitle` | `IG_VIDEO_NATIVE_SUBTITLE` | IG auto-subtitles (video only) |
+| `adv_profile_card` | `PROFILE_CARD` | Profile card |
+
+**Note on Advantage+ creative**: Meta's valid feature set varies by ad type, account, and what's enabled in Business Manager. Catalog-only features (`PRODUCT_TAGS`, `PRODUCT_BROWSING`, `STANDARD_ENHANCEMENTS_CATALOG`, etc.) only work on ads with a connected product catalog. If a column errors, paste the `must be one of {...}` message and we'll trim or rename.
 
 ### Finding your Saved Audience ID
 

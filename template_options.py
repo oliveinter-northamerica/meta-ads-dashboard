@@ -111,14 +111,26 @@ ADVANTAGE_PLUS_CREATIVE = ["", "ENABLED", "DISABLED"]
 ENROLL_STATUS = ["", "OPT_IN", "OPT_OUT"]
 
 # Maps each adv_* template column to the uppercase API feature key Meta
-# accepts in degrees_of_freedom_spec.creative_features_spec.
+# accepts in degrees_of_freedom_spec.creative_features_spec. Some keys
+# (marked *) are best-guesses from the Ads Manager UI labels and may need
+# adjusting if Meta rejects them.
 ADVANTAGE_FEATURE_COLUMNS = [
-    ("adv_image_animation", "IMAGE_ANIMATION"),
-    ("adv_image_touchups", "IMAGE_TOUCHUPS"),
-    ("adv_text_generation", "TEXT_GENERATION"),
+    # Advantage+ creative enhancements (opt-in)
+    ("adv_add_overlays", "ADD_TEXT_OVERLAY"),                # * Add overlays
+    ("adv_image_touchups", "IMAGE_TOUCHUPS"),                # Visual touch-ups
+    ("adv_music", "MUSIC"),                                  # Add music
+    ("adv_text_generation", "TEXT_GENERATION"),              # Text improvements
+    ("adv_image_animation", "IMAGE_ANIMATION"),              # Add animation
+    ("adv_product_tags", "PRODUCT_TAGS"),                    # * Add product tags
+    # Essential enhancements (mostly on by default)
+    ("adv_relevant_comments", "RELEVANT_COMMENTS"),          # Relevant comments
+    ("adv_enhance_cta", "CTA_ENHANCEMENT"),                  # Enhance CTA
+    ("adv_brightness_contrast", "IMAGE_BRIGHTNESS_AND_CONTRAST"),  # Adjust brightness
+    ("adv_reveal_details", "SHOWCASE_DESTINATION"),          # * Reveal details over time
+    ("adv_spotlights", "CREATIVE_HIGHLIGHTING"),             # * Show spotlights
+    # Other / video / translation
     ("adv_text_overlay_translation", "TEXT_OVERLAY_TRANSLATION"),
     ("adv_ig_video_subtitle", "IG_VIDEO_NATIVE_SUBTITLE"),
-    ("adv_music", "MUSIC"),
     ("adv_profile_card", "PROFILE_CARD"),
 ]
 
