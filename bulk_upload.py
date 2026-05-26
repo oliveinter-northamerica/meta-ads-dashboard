@@ -241,6 +241,32 @@ def _normalize_ids(row):
             row[col] = ",".join(_extract_id(p) for p in row[col].split(",") if p.strip())
 
 
+# Google Sheets / Excel error values that look like real text but mean
+# "this cell's formula broke". Treat any of these as a fatal data error
+# rather than passing them through to Meta.
+_SHEET_ERROR_VALUES = {
+    "#N/A", "#N/A!", "#REF!", "#NULL!", "#DIV/0!",
+    "#VALUE!", "#NAME?", "#NUM!", "#ERROR!", "#GETTING_DATA",
+}
+
+
+def _validate_rows(rows):
+    """Catch obvious spreadsheet problems (broken formulas, empty
+    campaign_name) before we start hitting the Meta API."""
+    for i, row in enumerate(rows, start=2):  # row 1 is the header
+        for col, val in row.items():
+            if isinstance(val, str) and val.strip() in _SHEET_ERROR_VALUES:
+                sys.exit(
+                    f"Row {i}, column {col!r}: cell value is {val.strip()!r} — "
+                    "looks like a broken spreadsheet formula (#N/A, #REF!, ...). "
+                    "Fix the row before re-running."
+                )
+        if not (row.get("campaign_name") or "").strip():
+            sys.exit(
+                f"Row {i}: campaign_name is empty. Fill it in or delete the row."
+            )
+
+
 def _parse_sheet_url(url_or_id):
     """Extract (sheet_id, gid) from a Google Sheets URL. Falls back to
     treating the input as a bare sheet_id with gid=0 if it doesn't look
@@ -283,6 +309,7 @@ def load_rows_from_sheet(url_or_id):
         sys.exit(f"Google Sheet {sheet_id} (gid={gid}) has no data rows.")
     for row in rows:
         _normalize_ids(row)
+    _validate_rows(rows)
     return rows
 
 
@@ -306,6 +333,7 @@ def load_rows(path):
         sys.exit(f"No rows in {path}")
     for row in rows:
         _normalize_ids(row)
+    _validate_rows(rows)
     return rows
 
 
