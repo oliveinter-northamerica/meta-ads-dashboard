@@ -312,8 +312,13 @@ def load_rows_from_sheet(url_or_id):
         f"?format=csv&gid={gid}&range={cell_range}"
     )
     req = urllib.request.Request(csv_url, headers={"User-Agent": "Mozilla/5.0"})
+    # 10 minutes — generous enough for very large or formula-heavy sheets.
+    # The Codespaces / GitHub-app HTTPS proxy still kills browser
+    # connections after ~60s though, so for long fetches use the CLI
+    # (no proxy in front of it).
+    sheet_timeout = int(os.environ.get("META_SHEET_TIMEOUT", "600"))
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=sheet_timeout) as resp:
             ctype = resp.headers.get("Content-Type", "")
             data = resp.read()
     except urllib.error.HTTPError as exc:
@@ -325,10 +330,10 @@ def load_rows_from_sheet(url_or_id):
         )
     except (TimeoutError, urllib.error.URLError) as exc:
         sys.exit(
-            f"Timed out fetching the Google Sheet ({exc}). The sheet is likely "
-            "very large or Google is slow right now. Try again in a minute, or "
-            "narrow the sheet to fewer rows. As a fallback, File → Download → "
-            ".xlsx and upload the file via the form."
+            f"Timed out fetching the Google Sheet after {sheet_timeout}s ({exc}). "
+            "Try a narrower range in the URL (e.g. add &range=A1:CB500), or use "
+            "the CLI which doesn't have a browser proxy in front of it. Set "
+            "META_SHEET_TIMEOUT=900 (or higher) to wait even longer."
         )
     if "text/csv" not in ctype.lower():
         sys.exit(
