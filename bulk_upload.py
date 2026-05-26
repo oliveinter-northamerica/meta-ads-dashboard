@@ -524,7 +524,7 @@ def build_campaign_params(row, name, multiplier=100):
     return params
 
 
-def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, existing_campaign=False, multiplier=100):
+def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, existing_campaign=False, multiplier=100, is_dynamic=False):
     cbo = _is_cbo(campaign_row) if campaign_row else False
     daily_budget = _money(row, "daily_budget")
     lifetime_budget = _money(row, "lifetime_budget")
@@ -606,6 +606,12 @@ def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, exist
     dsa_p = _get(row, "dsa_payor")
     if dsa_p:
         params["dsa_payor"] = dsa_p
+    if is_dynamic:
+        # Required when any creative under this ad set uses
+        # asset_feed_spec (multi-variant). Without this Meta rejects
+        # /ads with subcode 1885998 'Cannot Create Dynamic Creative
+        # ad In Non-Dynamic Creative Ad Set'.
+        params["is_dynamic_creative"] = True
     return params
 
 
@@ -906,6 +912,19 @@ def upload(account, tree, campaign_meta, adset_meta, dry_run):
             for a_name, ads in adsets.items():
                 am = adset_meta[(c_name, a_name)]
                 existing_adset = _get(am, "existing_adset_id")
+                # An ad set carrying any multi-variant (text-with-|) ad
+                # must be created as is_dynamic_creative=True. Reject
+                # mixing dynamic + static ads in the same ad set since
+                # Meta forbids that.
+                dyn_flags = [_is_multivariant(ad) for ad in ads]
+                if any(dyn_flags) and not all(dyn_flags):
+                    sys.exit(
+                        f"Ad set {a_name!r}: contains both ads with text variants "
+                        "(using '|' in primary_text/headline/description) and ads "
+                        "without. A dynamic creative ad set can only hold dynamic "
+                        "ads — split them into two ad sets or remove the variants."
+                    )
+                is_dynamic = bool(dyn_flags) and all(dyn_flags)
                 # Auto-lookup ad set by name within this campaign. Only
                 # meaningful when the campaign already exists in Meta (a
                 # campaign just created can't have ad sets in it yet).
@@ -919,7 +938,7 @@ def upload(account, tree, campaign_meta, adset_meta, dry_run):
                     protected_ids.add(adset_id)
                     print(f"  Reusing existing ad set {adset_id}: {a_name}")
                 else:
-                    as_params = build_adset_params(am, a_name, campaign_id, dry_run, campaign_row=cm, existing_campaign=bool(existing_campaign), multiplier=multiplier)
+                    as_params = build_adset_params(am, a_name, campaign_id, dry_run, campaign_row=cm, existing_campaign=bool(existing_campaign), multiplier=multiplier, is_dynamic=is_dynamic)
                     if dry_run:
                         print("AD SET:", json.dumps(as_params, indent=2, default=str))
                         adset_id = f"DRY_ADSET_{a_name}"
