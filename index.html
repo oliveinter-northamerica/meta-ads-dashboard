@@ -434,9 +434,9 @@ async function fetchAmazonApi(creds, startDate, endDate, fx) {
 
 function parseCsvDate(s) {
   s = (s || "").trim();
-  let m = s.match(/^(\d{4})[./\-](\d{1,2})[./\-](\d{1,2})$/);
+  let m = s.match(/^(\d{4})\s*[./\-]\s*(\d{1,2})\s*[./\-]\s*(\d{1,2})$/);
   if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  m = s.match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})$/);
   if (m) {
     let y = m[3]; if (y.length === 2) y = "20" + y;
     return y + "-" + m[1].padStart(2, "0") + "-" + m[2].padStart(2, "0");
