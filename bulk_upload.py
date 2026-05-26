@@ -245,8 +245,10 @@ def _normalize_ids(row):
 # "this cell's formula broke". Treat any of these as a fatal data error
 # rather than passing them through to Meta.
 _SHEET_ERROR_VALUES = {
-    "#N/A", "#N/A!", "#REF!", "#NULL!", "#DIV/0!",
-    "#VALUE!", "#NAME?", "#NUM!", "#ERROR!", "#GETTING_DATA",
+    "#N/A", "#N/A!", "#REF", "#REF!", "#NULL", "#NULL!", "#DIV/0", "#DIV/0!",
+    "#VALUE", "#VALUE!", "#NAME", "#NAME?", "#NUM", "#NUM!",
+    "#ERROR", "#ERROR!", "#ERROR?", "#GETTING_DATA",
+    "#SPILL!", "#CALC!", "#FIELD!", "#CONNECT!", "#UNKNOWN!",
 }
 
 
@@ -258,7 +260,7 @@ def _filter_rows(rows):
     for i, row in enumerate(rows, start=2):  # row 1 is the header
         skip_reason = None
         for col, val in row.items():
-            if isinstance(val, str) and val.strip() in _SHEET_ERROR_VALUES:
+            if isinstance(val, str) and val.strip().upper() in _SHEET_ERROR_VALUES:
                 skip_reason = f"column {col!r} has {val.strip()!r} (broken spreadsheet formula)"
                 break
         if not skip_reason and not (row.get("campaign_name") or "").strip():
