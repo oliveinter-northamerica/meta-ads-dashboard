@@ -297,7 +297,7 @@ def load_rows_from_sheet(url_or_id):
     csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
     req = urllib.request.Request(csv_url, headers={"User-Agent": "Mozilla/5.0"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=120) as resp:
             ctype = resp.headers.get("Content-Type", "")
             data = resp.read()
     except urllib.error.HTTPError as exc:
@@ -306,6 +306,13 @@ def load_rows_from_sheet(url_or_id):
             "shared with 'Anyone with the link → Viewer' so this script can read "
             "it without OAuth. Open the sheet, click 'Share' top-right, switch "
             "access to that, then retry."
+        )
+    except (TimeoutError, urllib.error.URLError) as exc:
+        sys.exit(
+            f"Timed out fetching the Google Sheet ({exc}). The sheet is likely "
+            "very large or Google is slow right now. Try again in a minute, or "
+            "narrow the sheet to fewer rows. As a fallback, File → Download → "
+            ".xlsx and upload the file via the form."
         )
     if "text/csv" not in ctype.lower():
         sys.exit(
