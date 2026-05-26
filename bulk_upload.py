@@ -250,21 +250,28 @@ _SHEET_ERROR_VALUES = {
 }
 
 
-def _validate_rows(rows):
-    """Catch obvious spreadsheet problems (broken formulas, empty
-    campaign_name) before we start hitting the Meta API."""
+def _filter_rows(rows):
+    """Drop rows with broken-formula cells (#N/A, #REF!, ...) or an
+    empty campaign_name, printing a warning per skipped row. The valid
+    rows continue to upload. Exits only if nothing valid is left."""
+    valid = []
     for i, row in enumerate(rows, start=2):  # row 1 is the header
+        skip_reason = None
         for col, val in row.items():
             if isinstance(val, str) and val.strip() in _SHEET_ERROR_VALUES:
-                sys.exit(
-                    f"Row {i}, column {col!r}: cell value is {val.strip()!r} — "
-                    "looks like a broken spreadsheet formula (#N/A, #REF!, ...). "
-                    "Fix the row before re-running."
-                )
-        if not (row.get("campaign_name") or "").strip():
-            sys.exit(
-                f"Row {i}: campaign_name is empty. Fill it in or delete the row."
-            )
+                skip_reason = f"column {col!r} has {val.strip()!r} (broken spreadsheet formula)"
+                break
+        if not skip_reason and not (row.get("campaign_name") or "").strip():
+            skip_reason = "campaign_name is empty"
+        if skip_reason:
+            print(f"  Skipping row {i}: {skip_reason}")
+            continue
+        valid.append(row)
+    if not valid:
+        sys.exit("No valid rows left after skipping broken ones.")
+    if len(valid) != len(rows):
+        print(f"  Proceeding with {len(valid)} of {len(rows)} row(s).")
+    return valid
 
 
 def _parse_sheet_url(url_or_id):
@@ -309,7 +316,7 @@ def load_rows_from_sheet(url_or_id):
         sys.exit(f"Google Sheet {sheet_id} (gid={gid}) has no data rows.")
     for row in rows:
         _normalize_ids(row)
-    _validate_rows(rows)
+    rows = _filter_rows(rows)
     return rows
 
 
@@ -333,7 +340,7 @@ def load_rows(path):
         sys.exit(f"No rows in {path}")
     for row in rows:
         _normalize_ids(row)
-    _validate_rows(rows)
+    rows = _filter_rows(rows)
     return rows
 
 
