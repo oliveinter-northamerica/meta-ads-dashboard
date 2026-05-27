@@ -140,6 +140,10 @@
         Amazon <strong>Ad Group name</strong> to Meta <strong>Ad name</strong> (case-insensitive).
         Uses the date range from section 4.
       </div>
+      <div id="unmatchedWrap" style="margin-top: 16px; display: none;">
+        <label style="margin-bottom: 6px;">Unmatched Amazon ad groups (no Meta ad with the same name)</label>
+        <div id="unmatchedTable"></div>
+      </div>
     </details>
   </div>
 
@@ -582,6 +586,35 @@ function render(rows, totals, range) {
     '<h2>' + range.since + " → " + range.until + '</h2>' + kpiHtml + tableHtml;
 }
 
+function renderUnmatchedTable(rows) {
+  const wrap = $("unmatchedWrap");
+  const host = $("unmatchedTable");
+  if (!rows.length) {
+    wrap.style.display = "none";
+    host.innerHTML = "";
+    return;
+  }
+  const sorted = [...rows].sort((a, b) => b.sales - a.sales);
+  const fmtKrw = (n) => "₩" + Math.round(n).toLocaleString();
+  const fmtInt = (n) => Math.round(n).toLocaleString();
+  const body = sorted.map(r =>
+    "<tr><td>" + escapeHtml(r.displayName) + "</td>"
+    + "<td>" + fmtInt(r.clicks) + "</td>"
+    + "<td>" + fmtInt(r.purchases) + "</td>"
+    + "<td>" + fmtKrw(r.sales) + "</td>"
+    + "<td>" + r.tagIds.length + "</td></tr>"
+  ).join("");
+  host.innerHTML =
+    '<table><thead><tr>'
+    + '<th>Ad group</th><th>Click-throughs</th><th>Purchases</th><th>Sales (KRW)</th><th>Rows</th>'
+    + '</tr></thead><tbody>' + body + '</tbody></table>';
+  wrap.style.display = "block";
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
 async function autoBuildMapping() {
   setStatus("");
   try {
@@ -621,8 +654,18 @@ async function autoBuildMapping() {
     for (const a of amazon) {
       const key = norm(a.adGroupName);
       if (!key) continue;
-      if (!amazonByName.has(key)) amazonByName.set(key, { displayName: a.adGroupName, tagIds: [] });
-      amazonByName.get(key).tagIds.push(a.tagId);
+      if (!amazonByName.has(key)) {
+        amazonByName.set(key, {
+          displayName: a.adGroupName,
+          tagIds: [],
+          clicks: 0, purchases: 0, sales: 0,
+        });
+      }
+      const agg = amazonByName.get(key);
+      agg.tagIds.push(a.tagId);
+      agg.clicks += a.clicks || 0;
+      agg.purchases += a.purchases || 0;
+      agg.sales += a.sales || 0;
     }
 
     const mapping = [];
@@ -630,7 +673,7 @@ async function autoBuildMapping() {
     let aggregated = 0;
     for (const [key, amz] of amazonByName) {
       const m = metaByName.get(key);
-      if (!m) { unmatched.push(amz.displayName); continue; }
+      if (!m) { unmatched.push(amz); continue; }
       if (m.ids.length > 1 || amz.tagIds.length > 1) aggregated++;
       mapping.push({
         metaAdIds: m.ids,
@@ -640,12 +683,12 @@ async function autoBuildMapping() {
     }
 
     $("mapping").value = JSON.stringify(mapping, null, 2);
+    renderUnmatchedTable(unmatched);
     let msg = "Auto-built " + mapping.length + " mappings from "
             + amazon.length + " Amazon rows / " + meta.length + " Meta ads."
             + (aggregated ? " " + aggregated + " entries aggregate multiple IDs by shared name." : "");
     if (unmatched.length) {
-      const sample = unmatched.slice(0, 5).join(", ") + (unmatched.length > 5 ? "…" : "");
-      msg += " Unmatched ad groups (" + unmatched.length + "): " + sample;
+      msg += " " + unmatched.length + " unmatched ad groups listed below.";
     }
     msg += " — review and click Save mapping.";
     setStatus(msg);
