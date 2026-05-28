@@ -628,14 +628,14 @@ def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, exist
         # /ads with subcode 1885998 'Cannot Create Dynamic Creative
         # ad In Non-Dynamic Creative Ad Set'.
         params["is_dynamic_creative"] = True
-    saved_audience_id = _get(row, "saved_audience_id")
-    if saved_audience_id:
-        # saved_audience_id lives at the ad-set level (sibling of
-        # targeting), NOT inside targeting. build_targeting already
-        # inlined the audience's resolved geo_locations / etc into
-        # params['targeting']; this preserves the link back to the
-        # saved audience itself.
-        params["saved_audience_id"] = saved_audience_id
+    # Note: we don't set saved_audience_id at the ad-set level. Setting
+    # it requires an app permission Meta hasn't granted to most apps
+    # (returns OAuthException code 10 'Application does not have
+    # permission for this action'). build_targeting already inlined the
+    # saved audience's full targeting spec into params['targeting'], so
+    # the ad set targets the right people — it just won't show "Saved
+    # audience: <name>" in Ads Manager and changes to the saved audience
+    # won't propagate to the ad set.
     return params
 
 
