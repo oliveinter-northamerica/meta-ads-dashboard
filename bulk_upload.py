@@ -461,15 +461,13 @@ def special_ad_categories(value):
 def build_targeting(row, dry_run=False):
     saved_id = (row.get("saved_audience_id") or "").strip()
     if saved_id:
-        # saved_audience_id alone makes Meta complain 'Location is
-        # missing' (subcode 1885364) on /adsets — it requires explicit
-        # geo_locations even when a saved audience already carries them.
-        # So we fetch the saved audience's full targeting spec and pass
-        # it alongside saved_audience_id: Meta gets the geo_locations
-        # (and any other required fields) AND the ad set still links
-        # back to the saved audience in Ads Manager.
+        # saved_audience_id is NOT a field inside targeting (Meta rejects
+        # with 1487079 'The field saved_audience_id is not a valid target
+        # spec field'). It belongs at the ad-set level — build_adset_params
+        # adds it there. We still need geo_locations/etc on targeting, so
+        # resolve the saved audience's spec here.
         if dry_run:
-            return {"saved_audience_id": saved_id}
+            return {"_saved_audience_placeholder": saved_id}
         from facebook_business.adobjects.savedaudience import SavedAudience
 
         sa_targeting = SavedAudience(saved_id).api_get(fields=["targeting"]).get("targeting") or {}
@@ -478,7 +476,9 @@ def build_targeting(row, dry_run=False):
                 f"Saved audience {saved_id} has no targeting spec — open it in "
                 "Ads Manager and check it has at least a location."
             )
-        return {**sa_targeting, "saved_audience_id": saved_id}
+        # Strip any saved_audience_id Meta returned inside the spec.
+        sa_targeting.pop("saved_audience_id", None)
+        return sa_targeting
     targeting = {
         "geo_locations": {"countries": [c.strip() for c in row["countries"].split(",") if c.strip()]},
         "age_min": int(row["age_min"]),
@@ -628,6 +628,14 @@ def build_adset_params(row, name, campaign_id, dry_run, campaign_row=None, exist
         # /ads with subcode 1885998 'Cannot Create Dynamic Creative
         # ad In Non-Dynamic Creative Ad Set'.
         params["is_dynamic_creative"] = True
+    saved_audience_id = _get(row, "saved_audience_id")
+    if saved_audience_id:
+        # saved_audience_id lives at the ad-set level (sibling of
+        # targeting), NOT inside targeting. build_targeting already
+        # inlined the audience's resolved geo_locations / etc into
+        # params['targeting']; this preserves the link back to the
+        # saved audience itself.
+        params["saved_audience_id"] = saved_audience_id
     return params
 
 
