@@ -307,6 +307,44 @@ def _normalize_ids(row):
             row[col] = ",".join(_extract_id(p) for p in row[col].split(",") if p.strip())
 
 
+def _resolve_influencer_placeholder(row):
+    """Shortcut for Paid Partnership Posts: when both page_id and
+    instagram_user_id are the literal word 'influencer', treat the row
+    as a partnership-post upload. The actual brand identity (used in
+    object_story_spec.page_id, second identity, etc.) is taken from
+    second_identity_page_id / second_identity_ig_id; the partner's
+    content comes from partnership_ad_code. Image / video / primary
+    text / headline / description on the row are ignored by the
+    existing partnership-code path."""
+    page_id = (row.get("page_id") or "").strip().lower()
+    ig_id = (row.get("instagram_user_id") or "").strip().lower()
+    if page_id != "influencer" or ig_id != "influencer":
+        return
+    sponsor_page = _get(row, "second_identity_page_id")
+    sponsor_ig = _get(row, "second_identity_ig_id")
+    partnership_code = _get(row, "partnership_ad_code")
+    if not partnership_code:
+        sys.exit(
+            f"Ad {row.get('ad_name')!r}: page_id/instagram_user_id='influencer' "
+            "marks this as a Paid Partnership Post — fill partnership_ad_code "
+            "with the partner's ad code."
+        )
+    if not sponsor_page.isdigit():
+        sys.exit(
+            f"Ad {row.get('ad_name')!r}: page_id/instagram_user_id='influencer' "
+            "marks this as a Paid Partnership Post — fill second_identity_page_id "
+            "with your brand's numeric Facebook Page ID."
+        )
+    if not sponsor_ig.isdigit():
+        sys.exit(
+            f"Ad {row.get('ad_name')!r}: page_id/instagram_user_id='influencer' "
+            "marks this as a Paid Partnership Post — fill second_identity_ig_id "
+            "with your brand's numeric Instagram Business Account ID."
+        )
+    row["page_id"] = sponsor_page
+    row["instagram_user_id"] = sponsor_ig
+
+
 # Google Sheets / Excel error values that look like real text but mean
 # "this cell's formula broke". Treat any of these as a fatal data error
 # rather than passing them through to Meta.
@@ -413,6 +451,8 @@ def load_rows_from_sheet(url_or_id):
     for row in rows:
         _normalize_ids(row)
     rows = _filter_rows(rows)
+    for row in rows:
+        _resolve_influencer_placeholder(row)
     return rows
 
 
@@ -437,6 +477,8 @@ def load_rows(path):
     for row in rows:
         _normalize_ids(row)
     rows = _filter_rows(rows)
+    for row in rows:
+        _resolve_influencer_placeholder(row)
     return rows
 
 
