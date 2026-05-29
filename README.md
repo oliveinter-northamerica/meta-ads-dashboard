@@ -1,38 +1,47 @@
 # meta-ads-dashboard
 
-AI-assisted comment moderation for Meta Pages and Instagram Business accounts.
+Single-file moderation inbox for **Facebook Page + Instagram Business comments**.
+No build step, no server, no database — just open `index.html`.
 
-Reviewers see one inbox of comments across organic posts and ads (incl. dark
-posts), automatically classified (spam / toxic / negative-genuine / neutral /
-positive) and translated to English from EN / ES / KO / ZH / JA. Actions are
-hide-only (never delete) and fully audited.
+## Usage
 
-See **[PLAN.md](./PLAN.md)** for architecture and the phased build plan.
+1. Open `index.html` in a browser (Chrome/Edge/Safari).
+2. Expand **Credentials**, paste a Meta user access token, click **Save**.
+3. Expand **Connected accounts**, click **Look up accounts**, check the Pages
+   and IG Business accounts you want to manage, click **Save selected**.
+4. In **Inbox**, click **Refresh** to pull recent comments. Reply, hide, or
+   delete each one inline.
 
-## Stack
+The token, connected accounts, and any cached state live in your browser's
+`localStorage`. **Wipe everything** in the warning banner clears it all.
 
-Next.js 15 (App Router, TypeScript) · Postgres + Prisma · NextAuth · Anthropic
-Claude · Vercel + Vercel Cron.
+## Required token scopes
 
-## Local setup
+Generate a user token (Graph API Explorer or your own OAuth flow) with:
 
-```bash
-cp .env.example .env.local        # set DATABASE_URL, DASHBOARD_PASSWORD, NEXTAUTH_SECRET
-npm install
-npx prisma migrate dev            # creates the schema in your Postgres
-npm run dev                       # → http://localhost:3000
-```
+- `pages_show_list` — list your Pages
+- `pages_read_engagement` — read Page posts and their comments
+- `pages_manage_engagement` — reply, hide, delete comments on FB Pages
+- `instagram_basic` — read IG Business profile + media
+- `instagram_manage_comments` — reply, hide, delete comments on IG
 
-You'll be redirected to `/login` — paste the password from `DASHBOARD_PASSWORD`,
-then go to **Accounts** to paste a Meta user token and pick which Pages / IG
-accounts to connect.
+Each Page you connect gets its own Page Access Token returned from
+`/me/accounts`; the dashboard uses that token for read/write on that Page and
+its linked IG Business account, so even if your user token expires, the
+connected Pages keep working until their Page tokens roll over.
 
-A free [Neon](https://neon.tech) Postgres works for `DATABASE_URL`.
+## What it does
 
-## Status
+- Lists recent comments across every connected account, newest first.
+- Filters: by account, by status (visible / hidden / needs reply).
+- Per-comment actions: **Reply**, **Hide** (FB only writes `is_hidden=true`;
+  IG writes `hide=true`), **Delete**.
+- Shows the post each comment belongs to with a link to the original.
 
-- **Phase 1** ✅ Foundation: plan, schema, scaffold.
-- **Phase 2** ✅ Auth gate + manual account connect (paste a token → discover
-  Pages and IG Business accounts → select which to add).
-- **Phase 3** ⏳ Ingest organic comments + read-only inbox table.
-- See [PLAN.md](./PLAN.md) for the full roadmap.
+## Limitations
+
+- Pulls only the 10 most recent posts per account and up to 25 comments per
+  post on each refresh. Older threads need to be loaded from the post directly.
+- No webhooks — comments only appear after you click Refresh.
+- Tokens live in `localStorage`. Don't open the file on a shared machine, and
+  use the **Wipe everything** button before walking away.

@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Meta Community Moderation</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0b0d10; color: #e6e8eb;
+  }
+  main { padding: 32px; max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 24px 0 8px; color: #8a93a0; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sub { color: #8a93a0; font-size: 13px; margin-bottom: 24px; }
+  .card { background: #15191f; border: 1px solid #2a313b; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  details summary { cursor: pointer; font-weight: 600; color: #e6e8eb; }
+  details[open] summary { margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: #8a93a0; margin: 8px 0 4px; }
+  input, textarea, button, select {
+    background: #0b0d10; color: #e6e8eb; border: 1px solid #2a313b;
+    padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit;
+  }
+  input, textarea, select { width: 100%; }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 80px; }
+  button { cursor: pointer; font-weight: 600; width: auto; }
+  button:hover { background: #1d232b; }
+  button.primary { background: #2563eb; border-color: #2563eb; color: white; }
+  button.primary:hover { background: #1d4ed8; }
+  button.danger { color: #fca5a5; border-color: #6e2020; }
+  button.danger:hover { background: #3a1212; }
+  button.small { padding: 4px 10px; font-size: 12px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .error { background: #3a1212; border: 1px solid #6e2020; color: #fca5a5; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+  .warn { background: #3a2c12; border: 1px solid #6e5520; color: #fcd34d; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px; }
+  .info { background: #122d3a; border: 1px solid #20556e; color: #93c5fd; padding: 8px 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px; }
+  .empty { color: #8a93a0; font-style: italic; padding: 24px; text-align: center; }
+  code { background: #0b0d10; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+  table { width: 100%; border-collapse: collapse; background: #15191f; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 10px 12px; text-align: left; font-size: 13px; border-bottom: 1px solid #2a313b; vertical-align: top; }
+  th { background: #1d232b; color: #8a93a0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  tr:last-child td { border-bottom: none; }
+
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+  .chip-fb { background: #1a3a6e33; color: #93c5fd; }
+  .chip-ig { background: #6e1a4a33; color: #f9a8d4; }
+  .chip-hidden { background: #6e552033; color: #fcd34d; }
+  .chip-reply { background: #2a313b; color: #8a93a0; }
+
+  .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #2a313b; flex-shrink: 0; }
+  .author { display: flex; gap: 8px; align-items: center; }
+  .author-name { font-weight: 600; }
+
+  .comment-message { white-space: pre-wrap; word-break: break-word; margin: 4px 0; }
+  .post-context { font-size: 12px; color: #8a93a0; margin-top: 6px; padding-left: 12px; border-left: 2px solid #2a313b; }
+  .post-context a { color: #93c5fd; text-decoration: none; }
+  .post-context a:hover { text-decoration: underline; }
+  .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .reply-box { margin-top: 8px; display: none; }
+  .reply-box.open { display: block; }
+
+  .account-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #2a313b; }
+  .account-row:last-child { border-bottom: none; }
+  .account-row input[type="checkbox"] { width: auto; }
+  .account-meta { color: #8a93a0; font-size: 12px; }
+
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar select { width: auto; min-width: 160px; }
+  .toolbar .spacer { flex: 1; }
+  .muted { color: #8a93a0; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Meta Community Moderation</h1>
+  <div class="sub">
+    Inbox for Facebook Page + Instagram Business comments. Everything runs in your
+    browser — paste a Meta access token, pick which accounts to watch, work through
+    comments inline. Credentials and selected accounts live in <code>localStorage</code>.
+  </div>
+
+  <div class="warn">
+    <strong>Local only.</strong> Your access token gives full read/write to your Pages and
+    IG comments — don't open this file on a shared machine, and don't paste the token
+    into anywhere else. <button class="small" onclick="wipeEverything()">Wipe everything</button>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>1. Credentials</summary>
+      <div class="row" style="margin-top: 12px;">
+        <div>
+          <label>Meta user access token (needs <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>pages_manage_engagement</code>, <code>instagram_basic</code>, <code>instagram_manage_comments</code>)</label>
+          <input id="metaToken" type="password" placeholder="EAAB..." />
+        </div>
+        <div>
+          <label>Graph API version</label>
+          <input id="metaVersion" placeholder="v21.0" />
+        </div>
+      </div>
+      <div class="controls" style="margin-top: 12px;">
+        <button onclick="saveCreds()">Save credentials</button>
+        <button onclick="clearCreds()">Clear</button>
+        <span id="tokenStatus" class="muted"></span>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <details open>
+      <summary>2. Connected accounts</summary>
+      <div class="controls" style="margin-top: 12px;">
+        <button class="primary" onclick="lookupAccounts()">Look up accounts</button>
+        <span id="lookupStatus" class="muted"></span>
+      </div>
+      <div id="discoveredWrap" style="display: none; margin-top: 12px;">
+        <label>Discovered (check the ones you want to manage)</label>
+        <div id="discoveredList"></div>
+        <div class="controls" style="margin-top: 8px;">
+          <button class="primary" onclick="connectSelected()">Save selected</button>
+          <button onclick="cancelDiscover()">Cancel</button>
+        </div>
+      </div>
+      <div style="margin-top: 16px;">
+        <label>Currently connected</label>
+        <div id="connectedList"></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <details open>
+      <summary>3. Inbox</summary>
+      <div class="toolbar" style="margin-top: 12px;">
+        <button class="primary" onclick="refreshInbox()">Refresh</button>
+        <select id="filterAccount" onchange="renderInbox()">
+          <option value="">All accounts</option>
+        </select>
+        <select id="filterStatus" onchange="renderInbox()">
+          <option value="all">All comments</option>
+          <option value="visible">Visible only</option>
+          <option value="hidden">Hidden only</option>
+          <option value="unreplied">Needs reply</option>
+        </select>
+        <span class="spacer"></span>
+        <span id="inboxStatus" class="muted"></span>
+      </div>
+      <div id="inboxStatusBox"></div>
+      <div id="inboxBody"></div>
+    </details>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// -------- storage --------
+const LS = {
+  creds: "creds.v1",
+  accounts: "accounts.v1",
+};
+const $ = (id) => document.getElementById(id);
+
+function loadCreds() {
+  let c = {};
+  try { c = JSON.parse(localStorage.getItem(LS.creds) || "{}"); } catch {}
+  $("metaToken").value = c.metaToken || "";
+  $("metaVersion").value = c.metaVersion || "v21.0";
+  updateTokenStatus(c);
+  return c;
+}
+function getCreds() {
+  try { return JSON.parse(localStorage.getItem(LS.creds) || "{}"); }
+  catch { return {}; }
+}
+function saveCreds() {
+  const c = {
+    metaToken: $("metaToken").value.trim(),
+    metaVersion: ($("metaVersion").value.trim() || "v21.0"),
+  };
+  localStorage.setItem(LS.creds, JSON.stringify(c));
+  updateTokenStatus(c);
+  setLookupStatus("Credentials saved.");
+}
+function clearCreds() {
+  localStorage.removeItem(LS.creds);
+  loadCreds();
+  setLookupStatus("Credentials cleared.");
+}
+function updateTokenStatus(c) {
+  $("tokenStatus").textContent = c.metaToken
+    ? "Token stored (" + c.metaToken.slice(0, 6) + "…" + c.metaToken.slice(-4) + ")"
+    : "No token saved.";
+}
+
+function getAccounts() {
+  try { return JSON.parse(localStorage.getItem(LS.accounts) || "[]"); }
+  catch { return []; }
+}
+function saveAccounts(list) {
+  localStorage.setItem(LS.accounts, JSON.stringify(list));
+}
+
+function wipeEverything() {
+  if (!confirm("Wipe stored token, connected accounts, and any cached state?")) return;
+  localStorage.removeItem(LS.creds);
+  localStorage.removeItem(LS.accounts);
+  loadCreds();
+  renderConnected();
+  state.comments = [];
+  state.lastFetchByAccount = {};
+  renderInbox();
+  setLookupStatus("All local data cleared.");
+}
+
+// -------- Graph API helpers --------
+function gv() { return getCreds().metaVersion || "v21.0"; }
+function graphUrl(path, params) {
+  const url = new URL("https://graph.facebook.com/" + gv() + path);
+  for (const [k, v] of Object.entries(params || {})) {
+    if (v != null) url.searchParams.set(k, v);
+  }
+  return url.toString();
+}
+async function graphGet(path, accessToken, params) {
+  const url = graphUrl(path, Object.assign({ access_token: accessToken }, params || {}));
+  const res = await fetch(url);
+  const body = await res.json();
+  if (!res.ok || body.error) {
+    throw new Error("Graph: " + (body.error && body.error.message ? body.error.message : res.statusText));
+  }
+  return body;
+}
+async function graphPost(path, accessToken, params) {
+  const form = new URLSearchParams();
+  for (const [k, v] of Object.entries(params || {})) {
+    if (v != null) form.set(k, String(v));
+  }
+  form.set("access_token", accessToken);
+  const res = await fetch("https://graph.facebook.com/" + gv() + path, {
+    method: "POST",
+    body: form,
+  });
+  const body = await res.json();
+  if (!res.ok || body.error) {
+    throw new Error("Graph: " + (body.error && body.error.message ? body.error.message : res.statusText));
+  }
+  return body;
+}
+async function graphDelete(path, accessToken) {
+  const url = graphUrl(path, { access_token: accessToken });
+  const res = await fetch(url, { method: "DELETE" });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.error) {
+    throw new Error("Graph: " + (body.error && body.error.message ? body.error.message : res.statusText));
+  }
+  return body;
+}
+
+// -------- account discovery --------
+let discovered = [];
+
+async function lookupAccounts() {
+  const creds = getCreds();
+  if (!creds.metaToken) {
+    setLookupStatus("Save a token in section 1 first.", true);
+    return;
+  }
+  setLookupStatus("Looking up Pages and IG accounts…");
+  try {
+    const body = await graphGet("/me/accounts", creds.metaToken, {
+      fields: "id,name,access_token,picture{url},instagram_business_account{id,username,profile_picture_url}",
+      limit: 100,
+    });
+    const out = [];
+    for (const page of body.data || []) {
+      out.push({
+        key: "FB_PAGE:" + page.id,
+        platform: "FB_PAGE",
+        id: page.id,
+        name: page.name,
+        pictureUrl: page.picture && page.picture.data && page.picture.data.url,
+        pageAccessToken: page.access_token,
+      });
+      if (page.instagram_business_account) {
+        const ig = page.instagram_business_account;
+        out.push({
+          key: "IG_BUSINESS:" + ig.id,
+          platform: "IG_BUSINESS",
+          id: ig.id,
+          name: "@" + (ig.username || ig.id),
+          pictureUrl: ig.profile_picture_url,
+          pageAccessToken: page.access_token,
+          linkedFbPageId: page.id,
+        });
+      }
+    }
+    discovered = out;
+    renderDiscovered();
+    setLookupStatus("Found " + out.length + " account(s).");
+  } catch (e) {
+    setLookupStatus(e.message, true);
+  }
+}
+
+function renderDiscovered() {
+  const wrap = $("discoveredWrap");
+  const host = $("discoveredList");
+  if (!discovered.length) {
+    wrap.style.display = "none";
+    return;
+  }
+  const existing = new Set(getAccounts().map(a => a.key));
+  host.innerHTML = discovered.map(a => `
+    <div class="account-row">
+      <input type="checkbox" data-key="${a.key}" ${existing.has(a.key) ? "checked" : ""} />
+      ${a.pictureUrl ? `<img class="avatar" src="${a.pictureUrl}" alt="" />` : `<div class="avatar"></div>`}
+      <div>
+        <div class="author-name">${escapeHtml(a.name)}</div>
+        <div class="account-meta">${a.platform === "FB_PAGE" ? "Facebook Page" : "Instagram Business"} · ${a.id}</div>
+      </div>
+    </div>
+  `).join("");
+  wrap.style.display = "block";
+}
+function cancelDiscover() {
+  discovered = [];
+  $("discoveredWrap").style.display = "none";
+  setLookupStatus("");
+}
+function connectSelected() {
+  const boxes = $("discoveredList").querySelectorAll("input[type=checkbox]");
+  const selectedKeys = new Set();
+  for (const b of boxes) if (b.checked) selectedKeys.add(b.dataset.key);
+
+  const current = getAccounts();
+  const byKey = new Map(current.map(a => [a.key, a]));
+  // Add or refresh selected
+  for (const a of discovered) {
+    if (selectedKeys.has(a.key)) byKey.set(a.key, a);
+  }
+  // Remove ones the user unchecked from the discovered set
+  for (const a of discovered) {
+    if (!selectedKeys.has(a.key)) byKey.delete(a.key);
+  }
+  saveAccounts([...byKey.values()]);
+  discovered = [];
+  $("discoveredWrap").style.display = "none";
+  setLookupStatus("Saved " + selectedKeys.size + " account(s).");
+  renderConnected();
+  renderAccountFilter();
+}
+
+function renderConnected() {
+  const host = $("connectedList");
+  const accounts = getAccounts();
+  if (!accounts.length) {
+    host.innerHTML = `<div class="empty">No accounts connected yet.</div>`;
+    return;
+  }
+  host.innerHTML = accounts.map(a => `
+    <div class="account-row">
+      ${a.pictureUrl ? `<img class="avatar" src="${a.pictureUrl}" alt="" />` : `<div class="avatar"></div>`}
+      <div style="flex: 1;">
+        <div class="author-name">${escapeHtml(a.name)}</div>
+        <div class="account-meta">${a.platform === "FB_PAGE" ? "Facebook Page" : "Instagram Business"} · ${a.id}</div>
+      </div>
+      <button class="small danger" onclick="disconnect('${a.key}')">Disconnect</button>
+    </div>
+  `).join("");
+}
+function disconnect(key) {
+  const a = getAccounts().find(x => x.key === key);
+  if (!a) return;
+  if (!confirm("Disconnect " + a.name + "?")) return;
+  saveAccounts(getAccounts().filter(x => x.key !== key));
+  renderConnected();
+  renderAccountFilter();
+  state.comments = state.comments.filter(c => c.accountKey !== key);
+  renderInbox();
+}
+
+// -------- inbox --------
+const state = {
+  comments: [],            // flat list of comments across accounts
+  lastFetchByAccount: {},  // key -> ISO time
+};
+
+function renderAccountFilter() {
+  const sel = $("filterAccount");
+  const prev = sel.value;
+  const accounts = getAccounts();
+  sel.innerHTML = `<option value="">All accounts</option>` +
+    accounts.map(a => `<option value="${a.key}">${escapeHtml(a.name)}</option>`).join("");
+  sel.value = accounts.find(a => a.key === prev) ? prev : "";
+}
+
+async function refreshInbox() {
+  const accounts = getAccounts();
+  if (!accounts.length) {
+    setInboxStatus("Connect at least one account in section 2.", true);
+    return;
+  }
+  $("inboxStatus").textContent = "Loading…";
+  setInboxStatus("");
+  const all = [];
+  const errors = [];
+  for (const a of accounts) {
+    try {
+      const batch = a.platform === "FB_PAGE"
+        ? await fetchFbComments(a)
+        : await fetchIgComments(a);
+      for (const c of batch) all.push(c);
+      state.lastFetchByAccount[a.key] = new Date().toISOString();
+    } catch (e) {
+      errors.push(a.name + ": " + e.message);
+    }
+  }
+  all.sort((x, y) => (y.createdTime || "").localeCompare(x.createdTime || ""));
+  state.comments = all;
+  $("inboxStatus").textContent = "Loaded " + all.length + " comment(s) across " + accounts.length + " account(s).";
+  if (errors.length) setInboxStatus(errors.join(" · "), true);
+  renderInbox();
+}
+
+async function fetchFbComments(account) {
+  // Recent posts → comments. Page token has the right scope for read + moderate.
+  const body = await graphGet("/" + account.id + "/posts", account.pageAccessToken, {
+    fields: "id,message,created_time,permalink_url,comments.limit(25).order(reverse_chronological){id,message,from{id,name,picture},created_time,parent{id},is_hidden,like_count,comment_count}",
+    limit: 10,
+  });
+  const out = [];
+  for (const post of body.data || []) {
+    const postCtx = {
+      id: post.id,
+      excerpt: (post.message || "").slice(0, 140),
+      permalink: post.permalink_url,
+      createdTime: post.created_time,
+    };
+    for (const c of (post.comments && post.comments.data) || []) {
+      out.push({
+        id: c.id,
+        accountKey: account.key,
+        accountName: account.name,
+        platform: "FB_PAGE",
+        pageAccessToken: account.pageAccessToken,
+        authorName: (c.from && c.from.name) || "Unknown",
+        authorId: c.from && c.from.id,
+        authorAvatar: c.from && c.from.picture && c.from.picture.data && c.from.picture.data.url,
+        message: c.message || "",
+        createdTime: c.created_time,
+        isHidden: !!c.is_hidden,
+        isReply: !!(c.parent && c.parent.id && c.parent.id !== post.id),
+        likeCount: c.like_count || 0,
+        replyCount: c.comment_count || 0,
+        post: postCtx,
+      });
+    }
+  }
+  return out;
+}
+
+async function fetchIgComments(account) {
+  // Recent IG media → comments. Uses linked Page token.
+  const body = await graphGet("/" + account.id + "/media", account.pageAccessToken, {
+    fields: "id,caption,permalink,timestamp,comments_count,comments.limit(25){id,text,username,timestamp,like_count,replies{id,text,username,timestamp,like_count}}",
+    limit: 10,
+  });
+  const out = [];
+  for (const m of body.data || []) {
+    const postCtx = {
+      id: m.id,
+      excerpt: (m.caption || "").slice(0, 140),
+      permalink: m.permalink,
+      createdTime: m.timestamp,
+    };
+    for (const c of (m.comments && m.comments.data) || []) {
+      out.push({
+        id: c.id,
+        accountKey: account.key,
+        accountName: account.name,
+        platform: "IG_BUSINESS",
+        pageAccessToken: account.pageAccessToken,
+        authorName: c.username ? "@" + c.username : "Unknown",
+        message: c.text || "",
+        createdTime: c.timestamp,
+        isHidden: false, // IG doesn't return hidden state in this read shape
+        isReply: false,
+        likeCount: c.like_count || 0,
+        replyCount: (c.replies && c.replies.data && c.replies.data.length) || 0,
+        post: postCtx,
+      });
+      for (const r of (c.replies && c.replies.data) || []) {
+        out.push({
+          id: r.id,
+          accountKey: account.key,
+          accountName: account.name,
+          platform: "IG_BUSINESS",
+          pageAccessToken: account.pageAccessToken,
+          authorName: r.username ? "@" + r.username : "Unknown",
+          message: r.text || "",
+          createdTime: r.timestamp,
+          isHidden: false,
+          isReply: true,
+          likeCount: r.like_count || 0,
+          replyCount: 0,
+          post: postCtx,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function renderInbox() {
+  const host = $("inboxBody");
+  let rows = state.comments;
+  const accountFilter = $("filterAccount").value;
+  const statusFilter = $("filterStatus").value;
+  if (accountFilter) rows = rows.filter(c => c.accountKey === accountFilter);
+  if (statusFilter === "visible") rows = rows.filter(c => !c.isHidden);
+  else if (statusFilter === "hidden") rows = rows.filter(c => c.isHidden);
+  else if (statusFilter === "unreplied") rows = rows.filter(c => !c.isReply && (c.replyCount || 0) === 0);
+
+  if (!rows.length) {
+    host.innerHTML = `<div class="empty">No comments to show. Click Refresh.</div>`;
+    return;
+  }
+
+  host.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 26%;">Author</th>
+          <th>Comment</th>
+          <th style="width: 140px;">Account</th>
+          <th style="width: 140px;">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(renderRow).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderRow(c) {
+  const time = c.createdTime ? new Date(c.createdTime).toLocaleString() : "";
+  const chip = c.platform === "FB_PAGE"
+    ? '<span class="chip chip-fb">FB</span>'
+    : '<span class="chip chip-ig">IG</span>';
+  const tags = [
+    c.isReply ? '<span class="chip chip-reply">reply</span>' : "",
+    c.isHidden ? '<span class="chip chip-hidden">hidden</span>' : "",
+  ].filter(Boolean).join(" ");
+
+  const post = c.post || {};
+  const postLink = post.permalink
+    ? `<a href="${post.permalink}" target="_blank" rel="noopener">view post ↗</a>`
+    : "";
+  const postExcerpt = post.excerpt
+    ? `"${escapeHtml(post.excerpt)}${post.excerpt.length >= 140 ? "…" : ""}"`
+    : "(no caption)";
+
+  const fbCanHide = c.platform === "FB_PAGE";
+  const fbHideLabel = c.isHidden ? "Unhide" : "Hide";
+
+  return `
+    <tr id="row-${cssId(c.id)}">
+      <td>
+        <div class="author">
+          ${c.authorAvatar ? `<img class="avatar" src="${c.authorAvatar}" alt="" />` : `<div class="avatar"></div>`}
+          <div>
+            <div class="author-name">${escapeHtml(c.authorName)}</div>
+            <div class="muted">${c.likeCount || 0} like(s) · ${c.replyCount || 0} reply(ies)</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div>${chip} ${tags}</div>
+        <div class="comment-message">${escapeHtml(c.message)}</div>
+        <div class="post-context">${postExcerpt} ${postLink}</div>
+        <div class="actions">
+          <button class="small" onclick="toggleReply('${cssId(c.id)}')">Reply</button>
+          ${fbCanHide ? `<button class="small" onclick="hideComment('${cssId(c.id)}')">${fbHideLabel}</button>` : ""}
+          ${c.platform === "IG_BUSINESS" && !c.isReply ? `<button class="small" onclick="igHideComment('${cssId(c.id)}', true)">Hide</button>` : ""}
+          <button class="small danger" onclick="deleteComment('${cssId(c.id)}')">Delete</button>
+        </div>
+        <div class="reply-box" id="reply-${cssId(c.id)}">
+          <textarea id="replyText-${cssId(c.id)}" placeholder="Write a reply…"></textarea>
+          <div class="actions">
+            <button class="small primary" onclick="sendReply('${cssId(c.id)}')">Send reply</button>
+            <button class="small" onclick="toggleReply('${cssId(c.id)}')">Cancel</button>
+          </div>
+        </div>
+        <div class="muted" id="rowStatus-${cssId(c.id)}"></div>
+      </td>
+      <td>${escapeHtml(c.accountName)}</td>
+      <td class="muted">${time}</td>
+    </tr>
+  `;
+}
+
+function toggleReply(id) {
+  $("reply-" + id).classList.toggle("open");
+}
+
+function findComment(id) {
+  return state.comments.find(c => cssId(c.id) === id);
+}
+
+function setRowStatus(id, msg, isError) {
+  const el = $("rowStatus-" + id);
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.color = isError ? "#fca5a5" : "#8a93a0";
+}
+
+async function sendReply(id) {
+  const c = findComment(id);
+  if (!c) return;
+  const text = ($("replyText-" + id).value || "").trim();
+  if (!text) { setRowStatus(id, "Type a message first.", true); return; }
+  setRowStatus(id, "Sending…");
+  try {
+    if (c.platform === "FB_PAGE") {
+      await graphPost("/" + c.id + "/comments", c.pageAccessToken, { message: text });
+    } else {
+      await graphPost("/" + c.id + "/replies", c.pageAccessToken, { message: text });
+    }
+    c.replyCount = (c.replyCount || 0) + 1;
+    $("replyText-" + id).value = "";
+    toggleReply(id);
+    setRowStatus(id, "Reply sent.");
+  } catch (e) {
+    setRowStatus(id, e.message, true);
+  }
+}
+
+async function hideComment(id) {
+  const c = findComment(id);
+  if (!c || c.platform !== "FB_PAGE") return;
+  const next = !c.isHidden;
+  setRowStatus(id, next ? "Hiding…" : "Unhiding…");
+  try {
+    await graphPost("/" + c.id, c.pageAccessToken, { is_hidden: next });
+    c.isHidden = next;
+    renderInbox();
+  } catch (e) {
+    setRowStatus(id, e.message, true);
+  }
+}
+
+async function igHideComment(id) {
+  const c = findComment(id);
+  if (!c || c.platform !== "IG_BUSINESS") return;
+  setRowStatus(id, "Hiding…");
+  try {
+    await graphPost("/" + c.id, c.pageAccessToken, { hide: true });
+    c.isHidden = true;
+    renderInbox();
+  } catch (e) {
+    setRowStatus(id, e.message, true);
+  }
+}
+
+async function deleteComment(id) {
+  const c = findComment(id);
+  if (!c) return;
+  if (!confirm("Delete this comment? This cannot be undone.")) return;
+  setRowStatus(id, "Deleting…");
+  try {
+    await graphDelete("/" + c.id, c.pageAccessToken);
+    state.comments = state.comments.filter(x => x.id !== c.id);
+    renderInbox();
+  } catch (e) {
+    setRowStatus(id, e.message, true);
+  }
+}
+
+// -------- util --------
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+function cssId(s) {
+  return String(s).replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+function setLookupStatus(msg, isError) {
+  const el = $("lookupStatus");
+  el.textContent = msg || "";
+  el.style.color = isError ? "#fca5a5" : "#8a93a0";
+}
+function setInboxStatus(msg, isError) {
+  const el = $("inboxStatusBox");
+  el.innerHTML = msg ? `<div class="${isError ? "error" : "info"}">${escapeHtml(msg)}</div>` : "";
+}
+
+// -------- init --------
+(function init() {
+  loadCreds();
+  renderConnected();
+  renderAccountFilter();
+  renderInbox();
+})();
+</script>
+</body>
+</html>
