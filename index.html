@@ -57,6 +57,15 @@
   .modal-content { background: #15191f; border: 1px solid #2a313b; border-radius: 8px; padding: 16px; max-width: 92vw; max-height: 92vh; overflow: auto; position: relative; min-width: 360px; }
   .modal-close { position: absolute; top: 8px; right: 8px; padding: 4px 10px; font-size: 16px; line-height: 1; }
   code { background: #0b0d10; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .table-scroll { overflow-x: auto; border: 1px solid #2a313b; border-radius: 8px; }
+  .table-scroll table { border-radius: 0; border: none; min-width: max-content; }
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: #e6e8eb; }
+  th .sort-ind { color: #2563eb; margin-left: 4px; }
+  .table-toolbar { display: flex; gap: 12px; align-items: center; margin: 12px 0 8px; flex-wrap: wrap; }
+  .table-toolbar input { width: 280px; }
+  .table-toolbar .count { color: #8a93a0; font-size: 12px; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -302,7 +311,7 @@ async function fetchMeta(creds, since, until) {
   const params = new URLSearchParams({
     access_token: creds.metaToken,
     level: "ad",
-    fields: "ad_id,ad_name,spend,impressions,clicks",
+    fields: "ad_id,ad_name,spend,impressions,clicks,reach,inline_link_clicks,outbound_clicks,video_3_sec_watched_actions,video_thruplay_watched_actions,video_avg_time_watched_actions",
     time_range: JSON.stringify({ since, until }),
     limit: "500",
   });
@@ -319,11 +328,28 @@ async function fetchMeta(creds, since, until) {
         spend: Number(r.spend || 0),
         impressions: Number(r.impressions || 0),
         clicks: Number(r.clicks || 0),
+        reach: Number(r.reach || 0),
+        linkClicks: Number(r.inline_link_clicks || 0),
+        outboundClicks: sumActionType(r.outbound_clicks, "outbound_click"),
+        videoViews3s: sumActionType(r.video_3_sec_watched_actions, "video_view"),
+        videoThruplay: sumActionType(r.video_thruplay_watched_actions, "video_view"),
+        videoAvgTime: pickActionValue(r.video_avg_time_watched_actions, "video_view"),
       });
     }
     url = body.paging?.next;
   }
   return rows;
+}
+
+function sumActionType(arr, type) {
+  if (!Array.isArray(arr)) return 0;
+  return arr.reduce((s, a) => s + (a.action_type === type ? Number(a.value || 0) : 0), 0);
+}
+
+function pickActionValue(arr, type) {
+  if (!Array.isArray(arr)) return 0;
+  for (const a of arr) if (a.action_type === type) return Number(a.value || 0);
+  return arr.length ? Number(arr[0].value || 0) : 0;
 }
 
 async function fetchMetaThumbnails(creds, adIds) {
@@ -425,15 +451,19 @@ async function fetchAmazonApi(creds, startDate, endDate, fx) {
   const body = await res.json();
   if (!res.ok) throw new Error("Amazon API: " + (body.message || res.statusText));
   const rate = lookupRate(fx || {}, startDate.slice(0, 7));
-  return (body.reports || []).map((r) => ({
-    tagId: r.attributionTagId || r.creativeId || r.adGroupName || "",
-    adGroupName: r.adGroupName || "",
-    clicks: Number(r.click || 0),
-    detailPageViews: Number(r.detailPageView || 0),
-    addToCart: Number(r.addToCart || 0),
-    purchases: Number(r.purchases || 0),
-    sales: Number(r.attributedSales14d || 0) * rate,
-  }));
+  return (body.reports || []).map((r) => {
+    const salesUsd = Number(r.attributedSales14d || 0);
+    return {
+      tagId: r.attributionTagId || r.creativeId || r.adGroupName || "",
+      adGroupName: r.adGroupName || "",
+      clicks: Number(r.click || 0),
+      detailPageViews: Number(r.detailPageView || 0),
+      addToCart: Number(r.addToCart || 0),
+      purchases: Number(r.purchases || 0),
+      salesUsd,
+      sales: salesUsd * rate,
+    };
+  });
 }
 
 function parseCsvDate(s) {
@@ -498,13 +528,15 @@ function parseCsv(text, since, until, fx) {
     const existing = byKey.get(keySource) || {
       tagId: idxTag >= 0 ? cells[idxTag] : keySource,
       adGroupName: idxAdGroup >= 0 ? cells[idxAdGroup] : "",
-      clicks: 0, detailPageViews: 0, addToCart: 0, purchases: 0, sales: 0,
+      clicks: 0, detailPageViews: 0, addToCart: 0, purchases: 0, salesUsd: 0, sales: 0,
     };
+    const rawSales = num(idxSales);
     existing.clicks += num(idxClicks);
     existing.detailPageViews += num(idxDpv);
     existing.addToCart += num(idxAtc);
     existing.purchases += num(idxPurch);
-    existing.sales += num(idxSales) * rate;
+    existing.salesUsd += rawSales;
+    existing.sales += rawSales * rate;
     byKey.set(keySource, existing);
   }
   if (filteredOut > 0) console.log("CSV: filtered out " + filteredOut + " rows outside " + since + "..." + until);
@@ -521,27 +553,137 @@ function joinByMapping(meta, amazon, mappings) {
     const metas = metaIds.map(id => metaByAdId.get(id)).filter(Boolean);
     const amzs = tagIds.map(id => amazonByTag.get(id)).filter(Boolean);
     const spend = sum(metas, "spend");
+    const impressions = sum(metas, "impressions");
     const sales = sum(amzs, "sales");
+    const salesUsd = sum(amzs, "salesUsd");
     const purchases = sum(amzs, "purchases");
+    const avgTimeWeighted = metas.reduce((acc, m) => acc + (m.videoAvgTime || 0) * (m.impressions || 0), 0);
     return {
       label: raw.label,
       metaAdId: metaIds.join(", "),
       firstMetaAdId: metaIds[0] || null,
       amazonTagId: tagIds.join(", "),
-      spend,
-      metaImpressions: sum(metas, "impressions"),
+      spend, impressions,
+      reach: sum(metas, "reach"),
       metaClicks: sum(metas, "clicks"),
+      linkClicks: sum(metas, "linkClicks"),
+      outboundClicks: sum(metas, "outboundClicks"),
+      videoViews3s: sum(metas, "videoViews3s"),
+      videoThruplay: sum(metas, "videoThruplay"),
+      videoAvgTime: impressions > 0 ? avgTimeWeighted / impressions : 0,
       amazonClicks: sum(amzs, "clicks"),
       detailPageViews: sum(amzs, "detailPageViews"),
       addToCart: sum(amzs, "addToCart"),
-      purchases, sales,
+      purchases, sales, salesUsd,
       roas: spend > 0 ? sales / spend : null,
-      cpa: purchases > 0 ? spend / purchases : null,
     };
   });
 }
 
+const dash = { rows: [], totals: {}, range: null, sortKey: "spend", sortDir: "desc", filter: "" };
+
+const fmtUsd = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPct = (n) => (n * 100).toFixed(2) + "%";
+const fmtSec = (n) => n > 0 ? n.toFixed(1) + "s" : "—";
+const fmtFreq = (n) => n > 0 ? n.toFixed(2) : "—";
+const ratio = (num, den) => den > 0 ? num / den : null;
+
+const COLS = [
+  { key: "preview", label: "Preview", sortable: false,
+    cell: r => r.thumbnailUrl
+      ? `<img class="thumb" src="${r.thumbnailUrl}" title="Click to preview" onclick="showPreview('${r.firstMetaAdId}')" />`
+      : (r.firstMetaAdId ? `<button onclick="showPreview('${r.firstMetaAdId}')">View</button>` : "—") },
+  { key: "label", label: "Ad", sortable: true, num: false,
+    sv: r => (r.label || "").toLowerCase(),
+    cell: r => escapeHtml(r.label || "") },
+  { key: "roas", label: "ROAS",
+    sv: r => r.roas == null ? -Infinity : r.roas,
+    cell: r => r.roas == null ? "—" : `<span class="${r.roas >= 1 ? "roas-good" : "roas-bad"}">${r.roas.toFixed(2)}x</span>` },
+  { key: "salesUsd", label: "Sales (USD)",
+    sv: r => r.salesUsd, cell: r => fmtUsd(r.salesUsd) },
+  { key: "spend", label: "Ad Cost (KRW)",
+    sv: r => r.spend, cell: r => fmtMoney(r.spend) },
+  { key: "purchases", label: "Purchases",
+    sv: r => r.purchases, cell: r => fmtNum(r.purchases) },
+  { key: "costPerPurchase", label: "Cost / Purchase",
+    sv: r => ratio(r.spend, r.purchases) ?? Infinity,
+    cell: r => { const v = ratio(r.spend, r.purchases); return v == null ? "—" : fmtMoney(v); } },
+  { key: "cvr", label: "CVR (Purchase / DPV)",
+    sv: r => ratio(r.purchases, r.detailPageViews) ?? -1,
+    cell: r => { const v = ratio(r.purchases, r.detailPageViews); return v == null ? "—" : fmtPct(v); } },
+  { key: "dpv", label: "DPV",
+    sv: r => r.detailPageViews, cell: r => fmtNum(r.detailPageViews) },
+  { key: "costPerDpv", label: "Cost / DPV",
+    sv: r => ratio(r.spend, r.detailPageViews) ?? Infinity,
+    cell: r => { const v = ratio(r.spend, r.detailPageViews); return v == null ? "—" : fmtMoney(v); } },
+  { key: "linkClickToDpv", label: "Link Click → DPV %",
+    sv: r => ratio(r.detailPageViews, r.linkClicks) ?? -1,
+    cell: r => { const v = ratio(r.detailPageViews, r.linkClicks); return v == null ? "—" : fmtPct(v); } },
+  { key: "atc", label: "ATC",
+    sv: r => r.addToCart, cell: r => fmtNum(r.addToCart) },
+  { key: "atcRate", label: "ATC Rate (ATC / DPV)",
+    sv: r => ratio(r.addToCart, r.detailPageViews) ?? -1,
+    cell: r => { const v = ratio(r.addToCart, r.detailPageViews); return v == null ? "—" : fmtPct(v); } },
+  { key: "costPerAtc", label: "Cost / ATC",
+    sv: r => ratio(r.spend, r.addToCart) ?? Infinity,
+    cell: r => { const v = ratio(r.spend, r.addToCart); return v == null ? "—" : fmtMoney(v); } },
+  { key: "reach", label: "Reach", sv: r => r.reach, cell: r => fmtNum(r.reach) },
+  { key: "impressions", label: "Impressions", sv: r => r.impressions, cell: r => fmtNum(r.impressions) },
+  { key: "frequency", label: "Frequency",
+    sv: r => ratio(r.impressions, r.reach) ?? -1,
+    cell: r => fmtFreq(ratio(r.impressions, r.reach) || 0) },
+  { key: "cpm", label: "CPM (KRW)",
+    sv: r => ratio(r.spend, r.impressions) ?? Infinity,
+    cell: r => { const v = ratio(r.spend, r.impressions); return v == null ? "—" : fmtMoney(v * 1000); } },
+  { key: "hookPct", label: "HOOK % (3s / Impr.)",
+    sv: r => ratio(r.videoViews3s, r.impressions) ?? -1,
+    cell: r => { const v = ratio(r.videoViews3s, r.impressions); return v == null || r.videoViews3s === 0 ? "—" : fmtPct(v); } },
+  { key: "holdRate", label: "Hold Rate (Thruplay / Impr.)",
+    sv: r => ratio(r.videoThruplay, r.impressions) ?? -1,
+    cell: r => { const v = ratio(r.videoThruplay, r.impressions); return v == null || r.videoThruplay === 0 ? "—" : fmtPct(v); } },
+  { key: "videoAvgTime", label: "Avg Watch",
+    sv: r => r.videoAvgTime, cell: r => fmtSec(r.videoAvgTime) },
+  { key: "linkClicks", label: "Link Clicks",
+    sv: r => r.linkClicks, cell: r => fmtNum(r.linkClicks) },
+  { key: "ctr", label: "CTR (Link / Impr.)",
+    sv: r => ratio(r.linkClicks, r.impressions) ?? -1,
+    cell: r => { const v = ratio(r.linkClicks, r.impressions); return v == null ? "—" : fmtPct(v); } },
+  { key: "cpc", label: "CPC (KRW)",
+    sv: r => ratio(r.spend, r.linkClicks) ?? Infinity,
+    cell: r => { const v = ratio(r.spend, r.linkClicks); return v == null ? "—" : fmtMoney(v); } },
+  { key: "outboundClicks", label: "Outbound Clicks",
+    sv: r => r.outboundClicks, cell: r => fmtNum(r.outboundClicks) },
+  { key: "outboundCtr", label: "Outbound CTR",
+    sv: r => ratio(r.outboundClicks, r.impressions) ?? -1,
+    cell: r => { const v = ratio(r.outboundClicks, r.impressions); return v == null ? "—" : fmtPct(v); } },
+];
+
+function setSort(key) {
+  const col = COLS.find(c => c.key === key);
+  if (!col || !col.sortable) return;
+  if (dash.sortKey === key) dash.sortDir = dash.sortDir === "asc" ? "desc" : "asc";
+  else { dash.sortKey = key; dash.sortDir = col.num === false ? "asc" : "desc"; }
+  renderDashboard();
+}
+
+function setFilter(value) {
+  dash.filter = value || "";
+  renderDashboard();
+  const inp = document.querySelector(".table-toolbar input");
+  if (inp) {
+    inp.focus();
+    const end = inp.value.length;
+    inp.setSelectionRange(end, end);
+  }
+}
+
 function render(rows, totals, range) {
+  dash.rows = rows; dash.totals = totals; dash.range = range;
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const { rows, totals, range, sortKey, sortDir, filter } = dash;
   if (!rows.length) {
     $("results").innerHTML = '<div class="empty">No mappings configured.</div>';
     return;
@@ -555,33 +697,46 @@ function render(rows, totals, range) {
         <div class="kpi-value ${totals.blendedRoas != null && totals.blendedRoas >= 1 ? "roas-good" : "roas-bad"}">${fmtRoas(totals.blendedRoas)}</div>
       </div>
     </div>`;
-  const tableHtml = `
-    <table>
-      <thead><tr>
-        <th>Preview</th><th>Ad</th><th>Spend</th><th>Impr.</th><th>Meta Clicks</th>
-        <th>Amz Clicks</th><th>DPV</th><th>ATC</th><th>Purchases</th>
-        <th>Sales</th><th>CPA</th><th>ROAS</th>
-      </tr></thead>
-      <tbody>
-        ${rows.map(r => `
-          <tr>
-            <td>${r.thumbnailUrl
-              ? `<img class="thumb" src="${r.thumbnailUrl}" title="Click to preview" onclick="showPreview('${r.firstMetaAdId}')" />`
-              : (r.firstMetaAdId ? `<button onclick="showPreview('${r.firstMetaAdId}')">View</button>` : "—")}</td>
-            <td>${r.label}</td>
-            <td>${fmtMoney(r.spend)}</td>
-            <td>${fmtNum(r.metaImpressions)}</td>
-            <td>${fmtNum(r.metaClicks)}</td>
-            <td>${fmtNum(r.amazonClicks)}</td>
-            <td>${fmtNum(r.detailPageViews)}</td>
-            <td>${fmtNum(r.addToCart || 0)}</td>
-            <td>${fmtNum(r.purchases)}</td>
-            <td>${fmtMoney(r.sales)}</td>
-            <td>${r.cpa == null ? "—" : fmtMoney(r.cpa)}</td>
-            <td class="${r.roas != null && r.roas >= 1 ? "roas-good" : "roas-bad"}">${fmtRoas(r.roas)}</td>
-          </tr>`).join("")}
-      </tbody>
-    </table>`;
+
+  const f = filter.trim().toLowerCase();
+  let view = f ? rows.filter(r => (r.label || "").toLowerCase().includes(f)) : rows;
+  const col = COLS.find(c => c.key === sortKey) || COLS.find(c => c.key === "spend");
+  if (col && col.sortable !== false) {
+    const dir = sortDir === "asc" ? 1 : -1;
+    view = [...view].sort((a, b) => {
+      const va = col.sv(a), vb = col.sv(b);
+      if (typeof va === "string") return dir * va.localeCompare(vb);
+      return dir * ((va || 0) - (vb || 0));
+    });
+  }
+
+  const headHtml = COLS.map(c => {
+    if (c.sortable === false) return `<th>${c.label}</th>`;
+    const active = c.key === sortKey;
+    const ind = active ? `<span class="sort-ind">${sortDir === "asc" ? "▲" : "▼"}</span>` : "";
+    const cls = "sortable" + (c.num === false ? "" : " num");
+    return `<th class="${cls}" onclick="setSort('${c.key}')">${c.label}${ind}</th>`;
+  }).join("");
+
+  const bodyHtml = view.map(r =>
+    "<tr>" + COLS.map(c => {
+      const cls = c.sortable !== false && c.num !== false ? "num" : "";
+      return `<td class="${cls}">${c.cell(r)}</td>`;
+    }).join("") + "</tr>"
+  ).join("");
+
+  const toolbar = `
+    <div class="table-toolbar">
+      <input type="text" placeholder="Filter by ad name…" value="${escapeHtml(filter)}"
+             oninput="setFilter(this.value)" />
+      <span class="count">${view.length} of ${rows.length} ads</span>
+    </div>`;
+
+  const tableHtml = `${toolbar}<div class="table-scroll"><table>
+    <thead><tr>${headHtml}</tr></thead>
+    <tbody>${bodyHtml}</tbody>
+  </table></div>`;
+
   $("results").innerHTML =
     '<h2>' + range.since + " → " + range.until + '</h2>' + kpiHtml + tableHtml;
 }
