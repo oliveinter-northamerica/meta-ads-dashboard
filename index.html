@@ -202,7 +202,7 @@ const fmtMoney = (n) => n.toLocaleString("ko-KR", { style: "currency", currency:
 const fmtNum = (n) => n.toLocaleString("en-US");
 const fmtRoas = (n) => n == null ? "—" : n.toFixed(2) + "x";
 
-const META_DATE_OFFSET_DAYS = -1;
+const META_DATE_OFFSET_DAYS = 1;
 function shiftDate(iso, days) {
   const d = new Date(iso + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
