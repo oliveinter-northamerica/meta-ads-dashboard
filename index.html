@@ -202,7 +202,7 @@ const fmtMoney = (n) => n.toLocaleString("ko-KR", { style: "currency", currency:
 const fmtNum = (n) => n.toLocaleString("en-US");
 const fmtRoas = (n) => n == null ? "—" : n.toFixed(2) + "x";
 
-const AMAZON_DATE_OFFSET_DAYS = -1;
+const META_DATE_OFFSET_DAYS = -1;
 function shiftDate(iso, days) {
   const d = new Date(iso + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
@@ -807,21 +807,21 @@ async function autoBuildMapping() {
 
     setStatus("Fetching Meta ads…");
     const fx = getFx();
-    const meta = await fetchMeta(creds, since, until);
+    const metaSince = shiftDate(since, META_DATE_OFFSET_DAYS);
+    const metaUntil = shiftDate(until, META_DATE_OFFSET_DAYS);
+    const meta = await fetchMeta(creds, metaSince, metaUntil);
 
-    const amzSince = shiftDate(since, AMAZON_DATE_OFFSET_DAYS);
-    const amzUntil = shiftDate(until, AMAZON_DATE_OFFSET_DAYS);
     let amazon;
     const source = $("amazonSource").value;
     if (source === "gsheet") {
       setStatus("Fetching Google Sheet…");
       const csvText = await fetchGsheetCsv($("gsheetUrl").value);
-      amazon = parseCsv(csvText, amzSince, amzUntil, fx);
+      amazon = parseCsv(csvText, since, until, fx);
     } else if (source === "csv") {
-      amazon = parseCsv($("amazonCsv").value, amzSince, amzUntil, fx);
+      amazon = parseCsv($("amazonCsv").value, since, until, fx);
     } else if (source === "api") {
       setStatus("Fetching Amazon Attribution…");
-      amazon = await fetchAmazonApi(creds, amzSince, amzUntil, fx);
+      amazon = await fetchAmazonApi(creds, since, until, fx);
     }
 
     const norm = (s) => (s || "").trim().toLowerCase();
@@ -896,18 +896,18 @@ async function run() {
   try {
     setStatus("Fetching Meta insights…");
     const fx = getFx();
-    const metaPromise = fetchMeta(creds, since, until);
-    const amzSince = shiftDate(since, AMAZON_DATE_OFFSET_DAYS);
-    const amzUntil = shiftDate(until, AMAZON_DATE_OFFSET_DAYS);
+    const metaSince = shiftDate(since, META_DATE_OFFSET_DAYS);
+    const metaUntil = shiftDate(until, META_DATE_OFFSET_DAYS);
+    const metaPromise = fetchMeta(creds, metaSince, metaUntil);
     const source = $("amazonSource").value;
     let amazonPromise;
     if (source === "api") {
-      amazonPromise = fetchAmazonApi(creds, amzSince, amzUntil, fx);
+      amazonPromise = fetchAmazonApi(creds, since, until, fx);
     } else if (source === "gsheet") {
       amazonPromise = fetchGsheetCsv($("gsheetUrl").value)
-        .then(text => parseCsv(text, amzSince, amzUntil, fx));
+        .then(text => parseCsv(text, since, until, fx));
     } else {
-      amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value, amzSince, amzUntil, fx));
+      amazonPromise = Promise.resolve(parseCsv($("amazonCsv").value, since, until, fx));
     }
     const [meta, amazon] = await Promise.all([metaPromise, amazonPromise]);
     const rows = joinByMapping(meta, amazon, mapping);
@@ -928,7 +928,7 @@ async function run() {
       .catch(e => { console.warn("thumbnails:", e.message); return e; });
 
     const reachPromise = Promise.all(multiAdRows.map(r =>
-      fetchUniqueReach(creds, since, until, r.metaAdIds)
+      fetchUniqueReach(creds, metaSince, metaUntil, r.metaAdIds)
         .then(unique => { r.reach = unique; })
         .catch(e => { console.warn("unique reach for " + r.label + ":", e.message); })
     ));
