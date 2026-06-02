@@ -341,6 +341,25 @@ async function fetchMeta(creds, since, until) {
   return rows;
 }
 
+async function fetchUniqueReach(creds, since, until, adIds) {
+  if (!adIds.length) return 0;
+  const params = new URLSearchParams({
+    access_token: creds.metaToken,
+    level: "account",
+    fields: "reach",
+    time_range: JSON.stringify({ since, until }),
+    filtering: JSON.stringify([{ field: "ad.id", operator: "IN", value: adIds }]),
+  });
+  const url = "https://graph.facebook.com/" + creds.metaVersion +
+              "/" + creds.metaAccount + "/insights?" + params.toString();
+  const res = await fetch(url);
+  const body = await res.json();
+  if (!res.ok || body.error) {
+    throw new Error("Meta unique reach: " + (body.error?.message || res.statusText));
+  }
+  return Number(body.data?.[0]?.reach || 0);
+}
+
 function sumActionType(arr, type) {
   if (!Array.isArray(arr)) return 0;
   return arr.reduce((s, a) => s + (a.action_type === type ? Number(a.value || 0) : 0), 0);
@@ -561,6 +580,7 @@ function joinByMapping(meta, amazon, mappings) {
     return {
       label: raw.label,
       metaAdId: metaIds.join(", "),
+      metaAdIds: metaIds,
       firstMetaAdId: metaIds[0] || null,
       amazonTagId: tagIds.join(", "),
       spend, impressions,
@@ -886,17 +906,28 @@ async function run() {
     }, { spend: 0, sales: 0, purchases: 0 });
     totals.blendedRoas = totals.spend > 0 ? totals.sales / totals.spend : null;
 
-    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows. Fetching previews…");
+    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows. Fetching previews & unique reach…");
     render(rows, totals, { since, until });
-    try {
-      const ids = [...new Set(rows.map(r => r.firstMetaAdId).filter(Boolean))];
-      const thumbs = await fetchMetaThumbnails(creds, ids);
-      rows.forEach(r => { r.thumbnailUrl = thumbs.get(r.firstMetaAdId) || null; });
-      render(rows, totals, { since, until });
-      setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows.");
-    } catch (e) {
-      setStatus("Joined OK but preview thumbnails failed: " + e.message, true);
-    }
+
+    const previewIds = [...new Set(rows.map(r => r.firstMetaAdId).filter(Boolean))];
+    const multiAdRows = rows.filter(r => (r.metaAdIds || []).length > 1);
+
+    const thumbPromise = fetchMetaThumbnails(creds, previewIds)
+      .then(thumbs => { rows.forEach(r => { r.thumbnailUrl = thumbs.get(r.firstMetaAdId) || null; }); })
+      .catch(e => { console.warn("thumbnails:", e.message); return e; });
+
+    const reachPromise = Promise.all(multiAdRows.map(r =>
+      fetchUniqueReach(creds, since, until, r.metaAdIds)
+        .then(unique => { r.reach = unique; })
+        .catch(e => { console.warn("unique reach for " + r.label + ":", e.message); })
+    ));
+
+    const [thumbResult] = await Promise.all([thumbPromise, reachPromise]);
+    render(rows, totals, { since, until });
+    const reachMsg = multiAdRows.length ? " Unique reach refreshed for " + multiAdRows.length + " grouped mappings." : "";
+    const thumbMsg = thumbResult instanceof Error ? " (thumbnails failed: " + thumbResult.message + ")" : "";
+    setStatus("Loaded " + meta.length + " Meta rows, " + amazon.length + " Amazon rows." + reachMsg + thumbMsg,
+              thumbResult instanceof Error);
   } catch (e) {
     setStatus(e.message, true);
   }
