@@ -89,9 +89,12 @@ Cloud project, no OAuth — the deployment URL itself is the shared secret.
 - **Connected accounts** (toggle): mirrored to the `Accounts` tab on connect
   / disconnect. Tokens are **not** sent — only id, name, platform, linked
   Page id.
-- **Comment log** (toggle, off by default): appends every fetched comment
-  to the `CommentLog` tab on each Refresh. Grows fast on busy accounts;
-  Google Sheets caps at 10M cells per spreadsheet.
+- **Comment log** (toggle, off by default): upserts every fetched comment
+  into the `CommentLog` tab on each Refresh, keyed by `comment_id`. Each
+  comment is one row that gets updated in place when its `like_count`,
+  `is_hidden`, `sentiment`, etc. change, so the sheet stays unique. The
+  `fetched_at` column becomes "last seen at." Pre-existing duplicate
+  rows in the tab are collapsed automatically on the next sync.
 
 **Reverse direction**: the **Pull overrides from sheet** button reads the
 `Overrides` tab and merges it back into the dashboard, so you can label in

@@ -174,7 +174,7 @@
       <div style="margin-top: 12px;">
         <label class="check-line"><input type="checkbox" id="syncOverridesOpt" /> Push sentiment overrides when I click Save</label>
         <label class="check-line"><input type="checkbox" id="syncAccountsOpt" /> Mirror connected accounts list (no tokens)</label>
-        <label class="check-line"><input type="checkbox" id="syncCommentsOpt" /> Append comment log on every Refresh (grows fast)</label>
+        <label class="check-line"><input type="checkbox" id="syncCommentsOpt" /> Sync comment log on every Refresh (upserts by comment_id — no duplicates)</label>
       </div>
       <details style="margin-top: 16px;">
         <summary>Setup — paste this Apps Script into your sheet</summary>
@@ -359,7 +359,7 @@ function doPost(e) {
     if (a === "ping")           return ok({ pong: true });
     if (a === "saveOverrides")  return ok(replace(SHEETS.overrides, data));
     if (a === "saveAccounts")   return ok(replace(SHEETS.accounts, data));
-    if (a === "appendComments") return ok(append(SHEETS.comments, data));
+    if (a === "syncComments")   return ok(upsert(SHEETS.comments, data, "comment_id", "created_time"));
     if (a === "loadOverrides")  return ok(read(SHEETS.overrides));
     return err("Unknown action: " + a);
   } catch (e2) { return err(e2.message); }
@@ -396,15 +396,43 @@ function replace(cfg, rows) {
   return { written: rows ? rows.length : 0 };
 }
 
-function append(cfg, rows) {
+// Upsert by a key column. Existing rows with matching keys are updated in place
+// (so re-Refresh doesn't create duplicates). Pre-existing duplicate keys in the
+// sheet are collapsed on each call. Result is sorted by sortByHeader descending.
+function upsert(cfg, rows, keyHeader, sortByHeader) {
   const s = getSheet(cfg);
-  if (!rows || !rows.length) return { written: 0 };
-  const values = rows.map(function(r) {
-    return cfg.headers.map(function(h) { return r[h] != null ? r[h] : ""; });
-  });
-  const start = s.getLastRow() + 1;
-  s.getRange(start, 1, values.length, cfg.headers.length).setValues(values);
-  return { written: rows.length, startRow: start };
+  const keyIdx = cfg.headers.indexOf(keyHeader);
+  if (keyIdx < 0) throw new Error("upsert: missing key column " + keyHeader);
+  const last = s.getLastRow();
+  const byKey = {};
+  if (last > 1) {
+    const existing = s.getRange(2, 1, last - 1, cfg.headers.length).getValues();
+    for (var i = 0; i < existing.length; i++) {
+      var k = String(existing[i][keyIdx] || "");
+      if (k) byKey[k] = existing[i];
+    }
+  }
+  var updated = 0, appended = 0;
+  if (rows && rows.length) {
+    for (var j = 0; j < rows.length; j++) {
+      var r = rows[j];
+      var k2 = String(r[keyHeader] || "");
+      if (!k2) continue;
+      var values = cfg.headers.map(function(h) { return r[h] != null ? r[h] : ""; });
+      if (byKey[k2]) updated++; else appended++;
+      byKey[k2] = values;
+    }
+  }
+  var out = Object.keys(byKey).map(function(k) { return byKey[k]; });
+  var sortIdx = sortByHeader ? cfg.headers.indexOf(sortByHeader) : -1;
+  if (sortIdx >= 0) {
+    out.sort(function(a, b) { return String(b[sortIdx] || "").localeCompare(String(a[sortIdx] || "")); });
+  }
+  if (last > 1) s.getRange(2, 1, last - 1, cfg.headers.length).clearContent();
+  if (out.length) {
+    s.getRange(2, 1, out.length, cfg.headers.length).setValues(out);
+  }
+  return { updated: updated, appended: appended, total: out.length };
 }
 
 function read(cfg) {
@@ -515,7 +543,7 @@ async function syncAccountsToSheet() {
   } catch (e) { setSheetsStatus("Sheets: " + e.message, true); }
 }
 
-async function appendCommentsToSheet(comments) {
+async function syncCommentsToSheet(comments) {
   if (!sheetsCfg().syncComments || !sheetsCfg().url || !comments.length) return;
   const fetched_at = new Date().toISOString();
   const rows = comments.map(c => ({
@@ -537,14 +565,16 @@ async function appendCommentsToSheet(comments) {
     sentiment: c.sentiment,
   }));
   // Chunk: Apps Script payload + execution time get tight on huge refreshes.
+  // The server upserts by comment_id so chunks dedupe naturally across calls.
   const CHUNK = 500;
-  let total = 0;
+  let updated = 0, appended = 0;
   try {
     for (let i = 0; i < rows.length; i += CHUNK) {
-      const r = await sheetsCall("appendComments", rows.slice(i, i + CHUNK));
-      total += r.written || 0;
+      const r = await sheetsCall("syncComments", rows.slice(i, i + CHUNK));
+      updated += r.updated || 0;
+      appended += r.appended || 0;
     }
-    setSheetsStatus(`Sheets: appended ${total} comment row(s).`);
+    setSheetsStatus(`Sheets: ${appended} new, ${updated} updated.`);
   } catch (e) { setSheetsStatus("Sheets: " + e.message, true); }
 }
 
@@ -845,7 +875,7 @@ async function refreshInbox() {
   state.comments = all;
   $("inboxStatus").textContent = "Loaded " + all.length + " comment(s) across " + accounts.length + " account(s).";
   renderInbox();
-  appendCommentsToSheet(all);
+  syncCommentsToSheet(all);
 }
 
 function renderDiagnostics() {
