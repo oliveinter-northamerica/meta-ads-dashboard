@@ -23,6 +23,8 @@
     padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit;
   }
   input, textarea, select { width: 100%; }
+  input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 6px; }
+  .check-line { display: flex; align-items: center; padding: 4px 0; font-size: 13px; color: #e6e8eb; }
   textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 80px; }
   button { cursor: pointer; font-weight: 600; width: auto; }
   button:hover { background: #1d232b; }
@@ -154,6 +156,44 @@
   </div>
 
   <div class="card">
+    <details>
+      <summary>1.5. Google Sheets sync (optional)</summary>
+      <div class="sub" style="margin: 8px 0 4px; font-size: 12px;">
+        Mirror sentiment overrides, connected accounts, and the per-Refresh
+        comment log to a Google Sheet you own. Requires a one-time Apps Script
+        deploy — see <strong>Setup</strong> below.
+      </div>
+      <label>Apps Script web app URL</label>
+      <input id="sheetsUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+      <div class="controls" style="margin-top: 12px;">
+        <button onclick="saveSheetsCfg()">Save</button>
+        <button onclick="testSheetsConnection()">Test connection</button>
+        <button onclick="pullOverridesFromSheet().catch(e=>setSheetsStatus(e.message,true))">Pull overrides from sheet</button>
+        <span id="sheetsStatus" class="muted"></span>
+      </div>
+      <div style="margin-top: 12px;">
+        <label class="check-line"><input type="checkbox" id="syncOverridesOpt" /> Push sentiment overrides when I click Save</label>
+        <label class="check-line"><input type="checkbox" id="syncAccountsOpt" /> Mirror connected accounts list (no tokens)</label>
+        <label class="check-line"><input type="checkbox" id="syncCommentsOpt" /> Append comment log on every Refresh (grows fast)</label>
+      </div>
+      <details style="margin-top: 16px;">
+        <summary>Setup — paste this Apps Script into your sheet</summary>
+        <ol style="font-size: 12px; color: #cbd5e1; padding-left: 20px;">
+          <li>Create a new Google Sheet (or open an existing one you want to use).</li>
+          <li><strong>Extensions → Apps Script</strong>. Delete the default <code>Code.gs</code> contents, paste the script below, save.</li>
+          <li><strong>Deploy → New deployment → Type: Web app</strong>. <em>Execute as:</em> Me. <em>Who has access:</em> Anyone. Click Deploy and accept the permissions prompt.</li>
+          <li>Copy the <strong>Web app URL</strong> Apps Script gives you, paste it into the field above, click Save, then Test connection.</li>
+          <li>The URL is a shared secret — anyone with it can read/write the sheet. To rotate, run <em>Deploy → Manage deployments → Edit → New version</em>.</li>
+        </ol>
+        <div style="position: relative;">
+          <button class="small" style="position: absolute; top: 8px; right: 8px;" onclick="copyAppsScript()">Copy</button>
+          <pre id="appsScriptBox" style="background: #0b0d10; border: 1px solid #2a313b; border-radius: 6px; padding: 12px; font-size: 11px; overflow-x: auto; white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #cbd5e1; max-height: 320px;"></pre>
+        </div>
+      </details>
+    </details>
+  </div>
+
+  <div class="card">
     <details open>
       <summary>2. Connected accounts</summary>
       <div class="controls" style="margin-top: 12px;">
@@ -241,6 +281,7 @@ const LS = {
   creds: "creds.v1",
   accounts: "accounts.v1",
   overrides: "overrides.v1",
+  sheets: "sheets.v1",
 };
 const $ = (id) => document.getElementById(id);
 
@@ -285,11 +326,13 @@ function saveAccounts(list) {
 }
 
 function wipeEverything() {
-  if (!confirm("Wipe stored token, connected accounts, sentiment overrides, and any cached state?")) return;
+  if (!confirm("Wipe stored token, connected accounts, sentiment overrides, Sheets sync settings, and any cached state?")) return;
   localStorage.removeItem(LS.creds);
   localStorage.removeItem(LS.accounts);
   localStorage.removeItem(LS.overrides);
+  localStorage.removeItem(LS.sheets);
   loadCreds();
+  loadSheetsForm();
   renderConnected();
   state.comments = [];
   state.lastFetchByAccount = {};
@@ -298,6 +341,229 @@ function wipeEverything() {
   updateSaveBar();
   renderInbox();
   setLookupStatus("All local data cleared.");
+}
+
+// -------- Google Sheets sync (via Apps Script web app) --------
+const APPS_SCRIPT_SRC = `// Paste this entire file as Code.gs in your sheet's Apps Script project.
+const SHEETS = {
+  overrides: { name: "Overrides", headers: ["comment_id","account_key","account_name","author","message","sentiment","updated_at"] },
+  accounts:  { name: "Accounts",  headers: ["key","platform","id","name","linked_fb_page_id","updated_at"] },
+  comments:  { name: "CommentLog", headers: ["fetched_at","comment_id","account_key","account_name","platform","author","message","post_id","post_permalink","post_excerpt","created_time","is_hidden","is_reply","like_count","reply_count","sentiment"] },
+};
+
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
+    const a = payload.action;
+    const data = payload.data;
+    if (a === "ping")           return ok({ pong: true });
+    if (a === "saveOverrides")  return ok(replace(SHEETS.overrides, data));
+    if (a === "saveAccounts")   return ok(replace(SHEETS.accounts, data));
+    if (a === "appendComments") return ok(append(SHEETS.comments, data));
+    if (a === "loadOverrides")  return ok(read(SHEETS.overrides));
+    return err("Unknown action: " + a);
+  } catch (e2) { return err(e2.message); }
+}
+
+function doGet() { return ok({ hello: "meta-moderation sync" }); }
+
+function ok(data)  { return ContentService.createTextOutput(JSON.stringify({ ok: true,  data: data }))
+                       .setMimeType(ContentService.MimeType.JSON); }
+function err(msg)  { return ContentService.createTextOutput(JSON.stringify({ ok: false, error: msg }))
+                       .setMimeType(ContentService.MimeType.JSON); }
+
+function getSheet(cfg) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName(cfg.name);
+  if (!s) {
+    s = ss.insertSheet(cfg.name);
+    s.getRange(1, 1, 1, cfg.headers.length).setValues([cfg.headers]).setFontWeight("bold");
+    s.setFrozenRows(1);
+  }
+  return s;
+}
+
+function replace(cfg, rows) {
+  const s = getSheet(cfg);
+  const last = s.getLastRow();
+  if (last > 1) s.getRange(2, 1, last - 1, cfg.headers.length).clearContent();
+  if (rows && rows.length) {
+    const values = rows.map(function(r) {
+      return cfg.headers.map(function(h) { return r[h] != null ? r[h] : ""; });
+    });
+    s.getRange(2, 1, values.length, cfg.headers.length).setValues(values);
+  }
+  return { written: rows ? rows.length : 0 };
+}
+
+function append(cfg, rows) {
+  const s = getSheet(cfg);
+  if (!rows || !rows.length) return { written: 0 };
+  const values = rows.map(function(r) {
+    return cfg.headers.map(function(h) { return r[h] != null ? r[h] : ""; });
+  });
+  const start = s.getLastRow() + 1;
+  s.getRange(start, 1, values.length, cfg.headers.length).setValues(values);
+  return { written: rows.length, startRow: start };
+}
+
+function read(cfg) {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(cfg.name);
+  if (!s) return [];
+  const last = s.getLastRow();
+  if (last < 2) return [];
+  const values = s.getRange(2, 1, last - 1, cfg.headers.length).getValues();
+  return values.map(function(row) {
+    const o = {};
+    cfg.headers.forEach(function(h, i) { o[h] = row[i]; });
+    return o;
+  });
+}
+`;
+
+function loadSheetsCfg() {
+  try { return JSON.parse(localStorage.getItem(LS.sheets) || "{}"); }
+  catch { return {}; }
+}
+function sheetsCfg() {
+  return Object.assign({ url: "", syncOverrides: false, syncAccounts: false, syncComments: false }, loadSheetsCfg());
+}
+function saveSheetsCfg() {
+  const cfg = {
+    url: $("sheetsUrl").value.trim(),
+    syncOverrides: $("syncOverridesOpt").checked,
+    syncAccounts: $("syncAccountsOpt").checked,
+    syncComments: $("syncCommentsOpt").checked,
+  };
+  localStorage.setItem(LS.sheets, JSON.stringify(cfg));
+  setSheetsStatus("Saved.");
+}
+function setSheetsStatus(msg, isError) {
+  const el = $("sheetsStatus");
+  el.textContent = msg || "";
+  el.style.color = isError ? "#fca5a5" : "#86efac";
+}
+function copyAppsScript() {
+  navigator.clipboard.writeText(APPS_SCRIPT_SRC)
+    .then(() => setSheetsStatus("Apps Script copied to clipboard."))
+    .catch(e => setSheetsStatus("Copy failed: " + e.message, true));
+}
+
+async function sheetsCall(action, data) {
+  const cfg = sheetsCfg();
+  if (!cfg.url) throw new Error("No Sheets URL configured");
+  // Use text/plain to avoid a CORS preflight against Apps Script.
+  const res = await fetch(cfg.url, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action, data }),
+    redirect: "follow",
+  });
+  const text = await res.text();
+  let body;
+  try { body = JSON.parse(text); }
+  catch { throw new Error("Non-JSON response: " + text.slice(0, 200)); }
+  if (!body.ok) throw new Error(body.error || "Unknown Sheets error");
+  return body.data;
+}
+
+async function testSheetsConnection() {
+  setSheetsStatus("Testing…");
+  try {
+    const r = await sheetsCall("ping", null);
+    setSheetsStatus("Connected. " + JSON.stringify(r));
+  } catch (e) {
+    setSheetsStatus(e.message, true);
+  }
+}
+
+function buildOverrideRows() {
+  const updated_at = new Date().toISOString();
+  return Object.entries(state.overrides).map(([commentId, sentiment]) => {
+    const c = state.comments.find(x => x.id === commentId) || {};
+    return {
+      comment_id: commentId,
+      account_key: c.accountKey || "",
+      account_name: c.accountName || "",
+      author: c.authorName || "",
+      message: c.message || "",
+      sentiment,
+      updated_at,
+    };
+  });
+}
+
+async function syncOverridesToSheet() {
+  if (!sheetsCfg().syncOverrides || !sheetsCfg().url) return;
+  try {
+    const r = await sheetsCall("saveOverrides", buildOverrideRows());
+    setSheetsStatus(`Sheets: wrote ${r.written} override(s).`);
+  } catch (e) { setSheetsStatus("Sheets: " + e.message, true); }
+}
+
+async function syncAccountsToSheet() {
+  if (!sheetsCfg().syncAccounts || !sheetsCfg().url) return;
+  const updated_at = new Date().toISOString();
+  const data = getAccounts().map(a => ({
+    key: a.key, platform: a.platform, id: a.id, name: a.name,
+    linked_fb_page_id: a.linkedFbPageId || "",
+    updated_at,
+  }));
+  try {
+    const r = await sheetsCall("saveAccounts", data);
+    setSheetsStatus(`Sheets: mirrored ${r.written} account(s).`);
+  } catch (e) { setSheetsStatus("Sheets: " + e.message, true); }
+}
+
+async function appendCommentsToSheet(comments) {
+  if (!sheetsCfg().syncComments || !sheetsCfg().url || !comments.length) return;
+  const fetched_at = new Date().toISOString();
+  const rows = comments.map(c => ({
+    fetched_at,
+    comment_id: c.id,
+    account_key: c.accountKey,
+    account_name: c.accountName,
+    platform: c.platform,
+    author: c.authorName,
+    message: c.message,
+    post_id: (c.post && c.post.id) || "",
+    post_permalink: (c.post && c.post.permalink) || "",
+    post_excerpt: (c.post && c.post.excerpt) || "",
+    created_time: c.createdTime,
+    is_hidden: c.isHidden,
+    is_reply: c.isReply,
+    like_count: c.likeCount,
+    reply_count: c.replyCount,
+    sentiment: c.sentiment,
+  }));
+  // Chunk: Apps Script payload + execution time get tight on huge refreshes.
+  const CHUNK = 500;
+  let total = 0;
+  try {
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const r = await sheetsCall("appendComments", rows.slice(i, i + CHUNK));
+      total += r.written || 0;
+    }
+    setSheetsStatus(`Sheets: appended ${total} comment row(s).`);
+  } catch (e) { setSheetsStatus("Sheets: " + e.message, true); }
+}
+
+async function pullOverridesFromSheet() {
+  setSheetsStatus("Pulling overrides…");
+  const rows = await sheetsCall("loadOverrides", null);
+  let n = 0;
+  for (const r of rows) {
+    if (r.comment_id && ["positive", "neutral", "negative"].includes(r.sentiment)) {
+      state.overrides[String(r.comment_id)] = r.sentiment;
+      n++;
+    }
+  }
+  persistOverrides();
+  for (const c of state.comments) {
+    c.sentiment = state.overrides[c.id] || classifySentiment(c.message);
+  }
+  renderInbox();
+  setSheetsStatus(`Pulled ${n} override(s) from sheet.`);
 }
 
 // -------- Graph API helpers --------
@@ -436,6 +702,7 @@ function connectSelected() {
   setLookupStatus("Saved " + selectedKeys.size + " account(s).");
   renderConnected();
   renderAccountFilter();
+  syncAccountsToSheet();
 }
 
 function renderConnected() {
@@ -465,6 +732,7 @@ function disconnect(key) {
   renderAccountFilter();
   state.comments = state.comments.filter(c => c.accountKey !== key);
   renderInbox();
+  syncAccountsToSheet();
 }
 
 // -------- sentiment (heuristic, run in browser) --------
@@ -570,6 +838,7 @@ async function refreshInbox() {
   state.comments = all;
   $("inboxStatus").textContent = "Loaded " + all.length + " comment(s) across " + accounts.length + " account(s).";
   renderInbox();
+  appendCommentsToSheet(all);
 }
 
 function renderDiagnostics() {
@@ -896,6 +1165,7 @@ function saveOverrides() {
   updateSaveBar();
   document.querySelectorAll("tr.row-pending").forEach(r => r.classList.remove("row-pending"));
   setInboxStatus(`Saved ${n} sentiment override(s).`);
+  syncOverridesToSheet(); // fire and forget; surfaces via #sheetsStatus
 }
 
 function discardOverrides() {
@@ -1080,9 +1350,19 @@ function setInboxStatus(msg, isError) {
   el.innerHTML = msg ? `<div class="${isError ? "error" : "info"}">${escapeHtml(msg)}</div>` : "";
 }
 
+function loadSheetsForm() {
+  const cfg = sheetsCfg();
+  $("sheetsUrl").value = cfg.url || "";
+  $("syncOverridesOpt").checked = !!cfg.syncOverrides;
+  $("syncAccountsOpt").checked = !!cfg.syncAccounts;
+  $("syncCommentsOpt").checked = !!cfg.syncComments;
+  $("appsScriptBox").textContent = APPS_SCRIPT_SRC;
+}
+
 // -------- init --------
 (function init() {
   loadCreds();
+  loadSheetsForm();
   renderConnected();
   renderAccountFilter();
   renderInbox();

@@ -60,6 +60,43 @@ connected Pages keep working until their Page tokens roll over.
   IG writes `hide=true`), **Delete**.
 - Shows the post each comment belongs to with a link to the original.
 
+## Optional: Google Sheets sync
+
+The dashboard can mirror your data to a Google Sheet you own — useful for
+backing up sentiment labels, sharing the connected-accounts list with a
+teammate, or building pivot tables on the full comment log.
+
+How it works: you deploy a tiny Apps Script as a web app, paste the URL into
+section 1.5, and the dashboard POSTs to it on relevant events. No Google
+Cloud project, no OAuth — the deployment URL itself is the shared secret.
+
+**One-time setup**
+
+1. Create / open a Google Sheet.
+2. **Extensions → Apps Script**. Delete the default `Code.gs`, paste the
+   script shown in section 1.5 of the dashboard (there's a Copy button), save.
+3. **Deploy → New deployment → Type: Web app**. Execute as: *Me*. Who has
+   access: *Anyone*. Accept the permissions prompt.
+4. Copy the resulting **Web app URL**, paste it into the dashboard, click
+   **Save**, then **Test connection**.
+
+**What gets synced**
+
+- **Sentiment overrides** (toggle in section 1.5): pushed on every click of
+  **Save** in the inbox. The sheet's `Overrides` tab gets a full replace —
+  one row per overridden comment with id, account, author, message,
+  sentiment, timestamp.
+- **Connected accounts** (toggle): mirrored to the `Accounts` tab on connect
+  / disconnect. Tokens are **not** sent — only id, name, platform, linked
+  Page id.
+- **Comment log** (toggle, off by default): appends every fetched comment
+  to the `CommentLog` tab on each Refresh. Grows fast on busy accounts;
+  Google Sheets caps at 10M cells per spreadsheet.
+
+**Reverse direction**: the **Pull overrides from sheet** button reads the
+`Overrides` tab and merges it back into the dashboard, so you can label in
+the sheet and have the dashboard pick it up.
+
 ## Limitations
 
 - Pulls only the 10 most recent posts per account and up to 25 comments per
