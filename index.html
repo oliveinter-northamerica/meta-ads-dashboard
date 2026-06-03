@@ -904,15 +904,36 @@ function renderDiagnostics() {
 }
 
 async function fetchFbComments(account) {
-  // Recent posts → comments. Page token has the right scope for read + moderate.
+  // Pull organic wall posts AND dark/unpublished post ad creatives. /posts only
+  // returns published-to-wall content; /promotable_posts with is_published=false
+  // surfaces dark posts used in ads, which is where ad-driven brands' comments
+  // actually live. We merge by post id (dark posts don't overlap /posts, but
+  // belt-and-braces).
   const postsLimit = getPostsLimit();
   const commentsLimit = getCommentsLimit();
-  const body = await graphGet("/" + account.id + "/posts", account.pageAccessToken, {
-    fields: `id,message,created_time,permalink_url,comments.limit(${commentsLimit}).order(reverse_chronological){id,message,from{id,name,picture},created_time,parent{id},is_hidden,like_count,comment_count}`,
-    limit: postsLimit,
-  });
+  const fields = `id,message,created_time,permalink_url,comments.limit(${commentsLimit}).order(reverse_chronological){id,message,from{id,name,picture},created_time,parent{id},is_hidden,like_count,comment_count}`;
+
+  async function pull(edge, extra) {
+    try {
+      const body = await graphGet("/" + account.id + "/" + edge, account.pageAccessToken,
+        Object.assign({ fields, limit: postsLimit }, extra || {}));
+      return body.data || [];
+    } catch (e) {
+      console.warn(`[fetch] ${account.name} /${edge} failed:`, e.message);
+      return [];
+    }
+  }
+
+  const [organic, dark] = await Promise.all([
+    pull("posts"),
+    pull("promotable_posts", { is_published: false }),
+  ]);
+  const byId = new Map();
+  for (const p of organic) byId.set(p.id, p);
+  for (const p of dark)    if (!byId.has(p.id)) byId.set(p.id, p);
+  const posts = [...byId.values()];
+
   const out = [];
-  const posts = body.data || [];
   for (const post of posts) {
     const postCtx = {
       id: post.id,
