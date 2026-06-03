@@ -82,6 +82,17 @@
   td.checkcol input, th.checkcol input { width: auto; cursor: pointer; }
   tr.row-hidden td { opacity: 0.5; }
   tr.row-hidden td .chip-hidden { opacity: 1; }
+  tr.row-pending td:nth-child(2) { box-shadow: inset 3px 0 0 #fcd34d; }
+
+  .savebar {
+    display: none; gap: 8px; align-items: center; flex-wrap: wrap;
+    background: #3a2c12; border: 1px solid #6e5520; color: #fcd34d;
+    padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 13px;
+  }
+  .savebar.open { display: flex; }
+  .savebar .spacer { flex: 1; }
+  .savebar button.primary { background: #d97706; border-color: #d97706; color: #1a1100; }
+  .savebar button.primary:hover { background: #b45309; }
 
   .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #2a313b; flex-shrink: 0; }
   .author { display: flex; gap: 8px; align-items: center; }
@@ -202,6 +213,12 @@
       </div>
       <div id="inboxStatusBox"></div>
       <div id="inboxDiagnostics"></div>
+      <div class="savebar" id="savebar">
+        <span><strong id="pendingCount">0</strong> unsaved status change(s)</span>
+        <span class="spacer"></span>
+        <button class="small primary" onclick="saveOverrides()">Save</button>
+        <button class="small" onclick="discardOverrides()">Discard</button>
+      </div>
       <div class="bulkbar" id="bulkbar">
         <span><strong id="bulkCount">0</strong> selected</span>
         <button class="small" onclick="bulkAction('hide')">Hide</button>
@@ -223,6 +240,7 @@
 const LS = {
   creds: "creds.v1",
   accounts: "accounts.v1",
+  overrides: "overrides.v1",
 };
 const $ = (id) => document.getElementById(id);
 
@@ -267,13 +285,17 @@ function saveAccounts(list) {
 }
 
 function wipeEverything() {
-  if (!confirm("Wipe stored token, connected accounts, and any cached state?")) return;
+  if (!confirm("Wipe stored token, connected accounts, sentiment overrides, and any cached state?")) return;
   localStorage.removeItem(LS.creds);
   localStorage.removeItem(LS.accounts);
+  localStorage.removeItem(LS.overrides);
   loadCreds();
   renderConnected();
   state.comments = [];
   state.lastFetchByAccount = {};
+  state.overrides = {};
+  state.pendingIds.clear();
+  updateSaveBar();
   renderInbox();
   setLookupStatus("All local data cleared.");
 }
@@ -490,9 +512,18 @@ const state = {
   comments: [],            // flat list of comments across accounts
   lastFetchByAccount: {},  // key -> ISO time
   selected: new Set(),     // selected comment ids
-  overrides: {},           // id -> sentiment override
+  overrides: loadOverrides(), // id -> sentiment override (hydrated from localStorage)
+  pendingIds: new Set(),   // override edits not yet saved
   fetchSummary: [],        // [{ accountKey, name, platform, postsChecked, commentsFound, error }]
 };
+
+function loadOverrides() {
+  try { return JSON.parse(localStorage.getItem(LS.overrides) || "{}"); }
+  catch { return {}; }
+}
+function persistOverrides() {
+  localStorage.setItem(LS.overrides, JSON.stringify(state.overrides));
+}
 
 function getPostsLimit() { return Number(($("postsPerAccount") || {}).value || 25); }
 function getCommentsLimit() { return Number(($("commentsPerPost") || {}).value || 50); }
@@ -834,6 +865,7 @@ function setSentiment(commentId, value) {
   if (!["positive", "neutral", "negative"].includes(value)) return;
   c.sentiment = value;
   state.overrides[commentId] = value;
+  state.pendingIds.add(commentId);
   // Recolor the select in place rather than re-rendering the table — keeps the
   // row visible even when a sentiment filter is active. The next Refresh /
   // filter change will reapply filters.
@@ -844,7 +876,40 @@ function setSentiment(commentId, value) {
       sel.classList.remove("sent-positive", "sent-neutral", "sent-negative");
       sel.classList.add("sent-" + value);
     }
+    row.classList.add("row-pending");
   }
+  updateSaveBar();
+}
+
+function updateSaveBar() {
+  const bar = $("savebar");
+  const n = state.pendingIds.size;
+  $("pendingCount").textContent = String(n);
+  bar.classList.toggle("open", n > 0);
+}
+
+function saveOverrides() {
+  if (!state.pendingIds.size) return;
+  persistOverrides();
+  const n = state.pendingIds.size;
+  state.pendingIds.clear();
+  updateSaveBar();
+  document.querySelectorAll("tr.row-pending").forEach(r => r.classList.remove("row-pending"));
+  setInboxStatus(`Saved ${n} sentiment override(s).`);
+}
+
+function discardOverrides() {
+  if (!state.pendingIds.size) return;
+  if (!confirm(`Discard ${state.pendingIds.size} unsaved sentiment change(s)?`)) return;
+  state.overrides = loadOverrides();
+  state.pendingIds.clear();
+  // Recompute each comment's sentiment from the saved overrides (or auto-classify).
+  for (const c of state.comments) {
+    c.sentiment = state.overrides[c.id] || classifySentiment(c.message);
+  }
+  updateSaveBar();
+  renderInbox();
+  setInboxStatus("Discarded unsaved sentiment changes.");
 }
 
 async function bulkAction(kind) {
