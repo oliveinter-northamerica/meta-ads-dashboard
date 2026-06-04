@@ -1,430 +1,362 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Meta Ads Dashboard — Last 30 Days</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <style>
-:root { color-scheme: light; }
-* { box-sizing: border-box; }
-body { font-family: -apple-system, "Segoe UI", "Malgun Gothic", Roboto, sans-serif; background: #f6f7f9; color: #16181d; margin: 0; padding: 24px; max-width: 1200px; margin-inline: auto; }
-h1 { font-size: 24px; margin: 0 0 4px; }
-h2 { font-size: 16px; margin: 28px 0 10px; color: #2c2f36; }
-.sub { color: #71757e; font-size: 13px; margin: 0 0 18px; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; font-size: 13px; }
-.controls button, .controls input, .controls select { font: inherit; padding: 6px 12px; border: 1px solid #d7dade; border-radius: 8px; background: #fff; cursor: pointer; }
-.controls button.on { background: #16181d; color: #fff; border-color: #16181d; }
-.controls .sep { width: 1px; height: 22px; background: #d7dade; margin: 0 4px; }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.kpi { background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; padding: 14px 16px; }
-.kpi .l { font-size: 12px; color: #71757e; margin: 0 0 4px; }
-.kpi .v { font-size: 22px; font-weight: 650; margin: 0; letter-spacing: -0.02em; }
-.kpi .s { font-size: 11px; color: #9aa0a9; margin: 4px 0 0; }
-.panel { background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; padding: 16px; }
-.cwrap { position: relative; width: 100%; height: 260px; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 800px) { .row2 { grid-template-columns: 1fr; } }
-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; overflow: hidden; }
-th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
-th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:nth-child(3), td:nth-child(3) { text-align: left; }
-th { background: #fafbfc; color: #555a63; font-weight: 600; cursor: pointer; user-select: none; }
-tr:last-child td { border-bottom: none; }
-.tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-.tag.ACTIVE { background: #e3f4ec; color: #156a45; }
-.tag.PAUSED { background: #f1f2f4; color: #6b6f78; }
-.tag.main { background: #e6f0fb; color: #185fa5; }
-.tag.bella { background: #fbeaf0; color: #993556; }
-.alertbox { background: #fdf0e6; color: #8a4a12; border-radius: 10px; padding: 10px 14px; font-size: 13px; margin: 14px 0; }
-footer { color: #9aa0a9; font-size: 12px; margin-top: 28px; line-height: 1.6; }
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Segoe UI", sans-serif;
+    background: #f5f6fa; color: #16181d; line-height: 1.5; padding: 18px; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+
+  header { background: linear-gradient(135deg, #0f172a, #1e3a5f); color: #fff; padding: 22px 26px;
+    border-radius: 14px; margin-bottom: 14px; }
+  header h1 { font-size: 21px; font-weight: 800; }
+  header .sub { font-size: 12px; opacity: .8; margin-top: 4px; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff;
+    border: 1px solid #e7eaf1; border-radius: 12px; padding: 11px 14px; margin-bottom: 14px; font-size: 12.5px; }
+  .bar .lbl { color: #6b7280; font-weight: 600; }
+  .btn { background: #f3f4f6; border: 1px solid #e5e7eb; color: #374151; padding: 5px 12px;
+    border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: #e5e7eb; }
+  .btn.on { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .btn.acct-main.on { background: #0284c7; border-color: #0284c7; }
+  .btn.acct-bella.on { background: #db2777; border-color: #db2777; }
+  .bar input[type=date] { border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px 8px; font-size: 12px; }
+  .bar .sp { flex: 1; } .bar .rng { color: #9ca3af; font-size: 11.5px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2,1fr); } }
+  .kpi { background: #fff; border: 1px solid #e7eaf1; border-top: 3px solid #1877f2; border-radius: 12px; padding: 14px 16px; }
+  .kpi .t { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+  .kpi .v { font-size: 21px; font-weight: 800; margin-top: 3px; }
+  .kpi .d { font-size: 10.5px; color: #9ca3af; margin-top: 2px; }
+
+  .card { background: #fff; border: 1px solid #e7eaf1; border-radius: 12px; padding: 16px 18px;
+    margin-bottom: 13px; overflow-x: auto; }
+  .card h2 { font-size: 14px; font-weight: 800; margin-bottom: 11px; padding-bottom: 7px; border-bottom: 1.5px solid #f1f2f7; }
+  .card h2 .hint { font-weight: 500; font-size: 11px; color: #9ca3af; margin-left: 6px; }
+  .ch { position: relative; height: 270px; }
+  .ch.tall { height: 480px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px; }
+  th, td { padding: 6px; border-bottom: 1px solid #f1f2f7; white-space: nowrap; }
+  th { background: #f8f9fc; color: #4b5563; font-weight: 700; text-align: left; font-size: 11px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: #fafbfd; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 10px; font-weight: 700; }
+  .pill.a { background: #dcfce7; color: #15803d; }
+  .pill.p { background: #f3f4f6; color: #6b7280; }
+  .tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 700; }
+  .tag.m { background: #e0f2fe; color: #075985; }
+  .tag.b { background: #fce7f3; color: #9d174d; }
+  .fbtns { display: flex; gap: 6px; margin-bottom: 9px; }
+  .foot { margin-top: 16px; text-align: center; font-size: 11px; color: #9ca3af; line-height: 1.7; }
 </style>
 </head>
 <body>
-<h1>Meta Ads Dashboard</h1>
-<p class="sub">Main 4233 ([북미]성분에디터_아마존) + Bella EGF 7831 (AI Video) · 2026-05-05 ~ 2026-06-03 · KRW</p>
+<div class="wrap">
 
-<div class="controls">
-  <button data-r="1">Today</button>
-  <button data-r="7">Last 7 days</button>
-  <button data-r="14">Last 14 days</button>
-  <button data-r="30" class="on">Last 30 days</button>
-  <span class="sep"></span>
-  From: <input type="date" id="from" min="2026-05-05" max="2026-06-03">
-  To: <input type="date" id="to" min="2026-05-05" max="2026-06-03">
-  <span class="sep"></span>
-  <button id="accAll" class="on">All</button>
-  <button id="accMain">Main</button>
-  <button id="accBella">Bella</button>
+<header>
+  <h1>Meta Ads Dashboard</h1>
+  <div class="sub">Main 4233 ([북미]성분에디터_아마존) + Bella EGF 7831 (AI Video) · 2026-05-05 ~ 2026-06-03 · KRW</div>
+</header>
+
+<div class="bar">
+  <button class="btn qd" data-d="1">Today</button>
+  <button class="btn qd" data-d="7">Last 7 days</button>
+  <button class="btn qd" data-d="14">Last 14 days</button>
+  <button class="btn qd on" data-d="30">Last 30 days</button>
+  <span class="lbl" style="margin-left:8px;">From:</span><input type="date" id="f">
+  <span class="lbl">To:</span><input type="date" id="t">
+  <button class="btn" id="apply">적용</button>
+  <span style="width:14px;"></span>
+  <button class="btn acct on" data-a="ALL">All</button>
+  <button class="btn acct acct-main" data-a="M">Main</button>
+  <button class="btn acct acct-bella" data-a="B">Bella</button>
+  <span class="sp"></span><span class="rng" id="rng"></span>
 </div>
 
-<div class="kpis" id="kpis"></div>
-<div class="alertbox" id="alerts"></div>
+<div class="kpis">
+  <div class="kpi"><div class="t">Total Spend</div><div class="v" id="kSp">—</div><div class="d">선택 기간 · 계정 합계</div></div>
+  <div class="kpi"><div class="t">Link Clicks</div><div class="v" id="kLc">—</div><div class="d" id="kIm">impressions —</div></div>
+  <div class="kpi"><div class="t">CTR (link)</div><div class="v" id="kCtr">—</div><div class="d">link clicks ÷ impressions</div></div>
+  <div class="kpi"><div class="t">CPC (link)</div><div class="v" id="kCpc">—</div><div class="d">spend ÷ link clicks</div></div>
+</div>
 
-<h2>Daily Spend</h2>
-<div class="panel"><div class="cwrap"><canvas id="cSpend"></canvas></div></div>
+<div class="card"><h2>Daily Spend <span class="hint">₩ · Main vs Bella stacked</span></h2><div class="ch"><canvas id="cSpend"></canvas></div></div>
+<div class="card"><h2>Daily CTR (link) %</h2><div class="ch"><canvas id="cCtr"></canvas></div></div>
+<div class="card"><h2>Daily CPC (link) ₩</h2><div class="ch"><canvas id="cCpc"></canvas></div></div>
+<div class="card"><h2>Spend by Campaign <span class="hint">last 30 days, top 20</span></h2><div class="ch tall"><canvas id="cCamp"></canvas></div></div>
 
-<div class="row2">
-  <div>
-    <h2>Daily CTR (link) %</h2>
-    <div class="panel"><div class="cwrap"><canvas id="cCtr"></canvas></div></div>
+<div class="card">
+  <h2>Campaign rollup <span class="hint">last 30 days 고정</span></h2>
+  <div class="fbtns" id="cf">
+    <button class="btn on" data-s="ALL">All</button>
+    <button class="btn" data-s="ACTIVE">Active</button>
+    <button class="btn" data-s="PAUSED">Paused</button>
   </div>
-  <div>
-    <h2>Daily CPC (link) ₩</h2>
-    <div class="panel"><div class="cwrap"><canvas id="cCpc"></canvas></div></div>
+  <table id="tCamp"></table>
+</div>
+
+<div class="card">
+  <h2>All ads with spend <span class="hint">last 30 days, top 30 per account</span></h2>
+  <div class="fbtns" id="af">
+    <button class="btn on" data-s="ALL">All</button>
+    <button class="btn" data-s="ACTIVE">Active</button>
+    <button class="btn" data-s="PAUSED">Paused</button>
   </div>
+  <table id="tAds"></table>
 </div>
 
-<h2>Spend by Campaign (last 30 days, top 20)</h2>
-<div class="panel"><div class="cwrap" id="campWrap" style="height:520px;"><canvas id="cCamp"></canvas></div></div>
-
-<h2>Campaign rollup (last 30 days) <span id="campCount" style="color:#9aa0a9;font-weight:400;"></span></h2>
-<div class="controls">
-  <button class="st on" data-s="ALL">All</button>
-  <button class="st" data-s="ACTIVE">Active</button>
-  <button class="st" data-s="PAUSED">Paused</button>
+<div class="foot">
+  Source: Meta Marketing API (MCP) · Generated 2026-06-04 · 구매/ROAS는 Meta 픽셀 어트리뷰션 기준(omni_purchase).
+  대부분 캠페인이 Amazon행 트래픽 캠페인이라 Amazon 매출·DPV·ATC는 이 데이터에 포함되지 않음 — Amazon Attribution 연동 필요.<br>
+  날짜 필터는 KPI·일별 차트에 적용되며 캠페인/광고 표는 30일 고정.
 </div>
-<table id="campTable">
-  <thead><tr>
-    <th data-k="name">Campaign</th><th data-k="acc">Account</th><th data-k="status">Status</th>
-    <th data-k="objective">Objective</th><th data-k="spend">Spend ₩</th><th data-k="clicks">Link Clicks</th>
-    <th data-k="ctr">CTR %</th><th data-k="cpc">CPC ₩</th>
-  </tr></thead>
-  <tbody></tbody>
-</table>
-
-<h2>All ads with spend (last 30 days, top 30 per account) <span id="adCount" style="color:#9aa0a9;font-weight:400;"></span></h2>
-<div class="controls">
-  <button class="ast on" data-s="ALL">All</button>
-  <button class="ast" data-s="ACTIVE">Active</button>
-  <button class="ast" data-s="PAUSED">Paused</button>
-</div>
-<div style="overflow-x:auto;">
-<table id="adsTable">
-  <thead><tr>
-    <th data-k="name">Ad</th><th data-k="camp">Campaign</th><th data-k="acc">Account</th>
-    <th data-k="status">Status</th><th data-k="spend">Spend ₩</th><th data-k="clicks">Link Clicks</th>
-    <th data-k="ctr">CTR %</th><th data-k="cpc">CPC ₩</th>
-  </tr></thead>
-  <tbody></tbody>
-</table>
 </div>
 
-<footer>
-Source: Meta Marketing API (MCP) · Generated 2026-06-04 · 구매/ROAS는 Meta 픽셀 어트리뷰션 기준(omni_purchase). 대부분 캠페인이 Amazon행 트래픽 캠페인이라 Amazon 매출·DPV·ATC는 이 데이터에 포함되지 않음 — Amazon Attribution 연동 필요. 날짜 필터는 KPI·일별 차트에 적용되며 캠페인 표는 30일 고정.
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <script>
-// [date, spend, impressions, linkClicks, purchases, roasPct]
-const MAIN = [
-["2026-05-05",2978124,238219,8147,0,0],["2026-05-06",2576749,180025,6965,0,0],
-["2026-05-07",3079625,230227,8354,0,0],["2026-05-08",3952647,299074,10751,0,0],
-["2026-05-09",2757907,197239,7811,0,0],["2026-05-10",3415487,332866,10030,1,1.66],
-["2026-05-11",3507683,304988,9699,0,0],["2026-05-12",2697938,203428,7283,1,3.38],
-["2026-05-13",2712955,258169,6893,1,6.38],["2026-05-14",1418904,99307,4249,0,0],
-["2026-05-15",1064472,76688,3697,0,0],["2026-05-16",990783,71357,3294,0,0],
-["2026-05-17",971036,70238,3383,0,0],["2026-05-18",1052524,80563,3494,0,0],
-["2026-05-19",1496935,141030,4756,0,0],["2026-05-20",1341464,108229,4407,0,0],
-["2026-05-21",974659,67167,3223,1,24],["2026-05-22",1823171,158464,4872,0,0],
-["2026-05-23",2643017,248140,7212,1,3.40],["2026-05-24",3132228,215898,8808,1,2.36],
-["2026-05-25",2664386,156809,8002,2,12],["2026-05-26",2612383,184934,7905,1,5.03],
-["2026-05-27",3696757,327387,11902,0,0],["2026-05-28",4416855,305221,13738,3,8.70],
-["2026-05-29",4574351,280947,14151,0,0],["2026-05-30",4503916,268960,11914,0,0],
-["2026-05-31",4955233,304786,13317,0,0],["2026-06-01",4238065,264993,10782,1,1.25],
-["2026-06-02",3199865,250421,8214,0,0],["2026-06-03",2579053,215465,7204,0,0]];
-const BELLA = [
-["2026-05-05",104053,7275,634,0,0],["2026-05-06",101754,8427,897,0,0],
-["2026-05-07",79757,6669,669,0,0],["2026-05-08",116350,9507,869,0,0],
-["2026-05-09",97471,7464,795,0,0],["2026-05-10",113998,9519,991,0,0],
-["2026-05-11",77307,6529,585,0,0],["2026-05-12",49728,3490,318,0,0],
-["2026-05-13",58997,4234,357,0,0],["2026-05-14",48131,3637,364,0,0],
-["2026-05-15",50855,3791,341,0,0],["2026-05-16",71073,4871,401,0,0],
-["2026-05-17",68105,4918,431,0,0],["2026-05-18",59222,4260,355,0,0],
-["2026-05-19",58855,3876,351,0,0],["2026-05-20",72212,5450,519,0,0],
-["2026-05-21",63259,4703,418,0,0],["2026-05-22",60989,4144,363,0,0],
-["2026-05-23",62577,4344,366,0,0],["2026-05-24",71820,4967,436,0,0],
-["2026-05-25",85998,6138,494,0,0],["2026-05-26",89522,6772,504,0,0],
-["2026-05-27",82269,6803,500,0,0],["2026-05-28",99342,8158,534,0,0],
-["2026-05-29",165238,14178,848,0,0],["2026-05-30",107212,8747,574,0,0],
-["2026-05-31",127945,10255,586,0,0],["2026-06-01",115991,9389,524,0,0],
-["2026-06-02",103855,8408,542,0,0],["2026-06-03",161348,11822,986,0,0]];
-// {acc, name, status, objective, spend, imp, clicks}
-const CAMP = [
-["main","Tier2_Landing_Home","ACTIVE","LINK_CLICKS",7243708,683566,22779],
-["main","2605_tr_Retargeting","ACTIVE","LINK_CLICKS",6480773,653723,19150],
-["main","MAIN_US_spa_pic","ACTIVE","LINK_CLICKS",6468404,899178,17045],
-["main","MAIN_KR_ccc_greentomato_video","ACTIVE","LINK_CLICKS",6300098,315183,12395],
-["main","2604_tr_Single_ccc_CN","ACTIVE","LINK_CLICKS",5280026,306540,14411],
-["main","MAIN_CN_spa_video","ACTIVE","LINK_CLICKS",4780200,337818,10379],
-["main","2603_AMZ_BridgePage","ACTIVE","OUTCOME_SALES",4704637,109473,5712],
-["main","2504_tr_Collab","ACTIVE","LINK_CLICKS",4295875,212282,12575],
-["main","MAIN_KR_ccc_video","PAUSED","LINK_CLICKS",2799921,119918,5387],
-["main","Single_ccc_CN","ACTIVE","LINK_CLICKS",1941306,118439,4261],
-["main","2602_tr_Product_spa_video2","ACTIVE","LINK_CLICKS",1908229,158357,5871],
-["main","2604_tr_Single_spa_CN","ACTIVE","LINK_CLICKS",1857709,127454,4921],
-["main","Single_US_EGFamp","ACTIVE","LINK_CLICKS",1805138,126497,7309],
-["main","MAIN_KR_spa_pic","ACTIVE","LINK_CLICKS",1795246,129221,4659],
-["main","Single_US_spa","ACTIVE","LINK_CLICKS",1759055,177210,4711],
-["main","2605_tr_Collab","PAUSED","LINK_CLICKS",1642968,117157,8262],
-["main","Tier3_TEST_ccc","ACTIVE","LINK_CLICKS",1612998,149068,7881],
-["main","2604_tr_Single_spa_CN_2","ACTIVE","LINK_CLICKS",1499808,92441,3883],
-["main","Single_US_ccc","ACTIVE","LINK_CLICKS",1425338,98457,5612],
-["main","2510_tr_Collab","ACTIVE","LINK_CLICKS",1316344,78835,4691],
-["main","2601_tr_Collab","ACTIVE","LINK_CLICKS",971427,62661,4542],
-["main","Single_CN_spa","ACTIVE","LINK_CLICKS",904917,70286,2807],
-["main","2604_tr_Single_serum","PAUSED","LINK_CLICKS",899038,68782,2937],
-["main","Single_CN_EGFamp","ACTIVE","LINK_CLICKS",843668,57252,2723],
-["main","2602_tr_Product_spa_Gif","ACTIVE","LINK_CLICKS",793654,37631,1539],
-["main","PROMO_US_PDRNamp","PAUSED","LINK_CLICKS",788515,65386,2227],
-["main","2602_tr_Product_spa_KR","PAUSED","LINK_CLICKS",554866,44335,1902],
-["main","2604_tr_Collab_spa","PAUSED","LINK_CLICKS",498606,39855,2341],
-["main","Promo_US_Kojicamp","PAUSED","LINK_CLICKS",497730,38970,2154],
-["main","2603_tr_Product_spa_pic","PAUSED","LINK_CLICKS",483848,33115,1883],
-["bella","2604_tr_Single_spa","ACTIVE","LINK_CLICKS",1032623,76405,6866],
-["bella","TEST_US_ccc","ACTIVE","LINK_CLICKS",750407,63463,3784],
-["bella","2604_tr_Single_spa_2","PAUSED","LINK_CLICKS",545666,36611,3430],
-["bella","TEST_US_spa","PAUSED","LINK_CLICKS",115219,9525,702],
-["bella","TEST_US_EGFAmp","ACTIVE","LINK_CLICKS",93339,7040,554],
-["bella","2604_tr_Single_spa_Espanol","PAUSED","LINK_CLICKS",58098,7385,1061],
-["bella","TEST_US_serum","ACTIVE","LINK_CLICKS",29881,2316,155]];
-
-const CNAME = {
-"120243357172150559":"Tier2_Landing_Home","120243846710340559":"2605_tr_Retargeting",
-"120241490584890559":"MAIN_US_spa_pic","120241417955560559":"MAIN_KR_ccc_greentomato_video",
-"120243206238630559":"2604_tr_Single_ccc_CN","120241191004880559":"MAIN_CN_spa_video",
-"120240594379160559":"2603_AMZ_BridgePage","120222064753510559":"2504_tr_Collab",
-"120240561439880559":"MAIN_KR_ccc_video","120245553596360559":"Single_ccc_CN",
-"120240386521410559":"2602_tr_Product_spa_video2","120243073903220559":"2604_tr_Single_spa_CN",
-"120244814108500559":"Single_US_EGFamp","120241304878420559":"MAIN_KR_spa_pic",
-"120245630627510559":"Single_US_spa","120244123107460559":"2605_tr_Collab",
-"120243645514610559":"Tier3_TEST_ccc","120242207041770559":"2604_tr_Single_spa_CN_2",
-"120245273809200559":"Single_US_ccc","120233288536990559":"2510_tr_Collab",
-"120238700090740559":"2601_tr_Collab","120245719400960559":"Single_CN_spa",
-"120241871848900559":"2604_tr_Single_serum","120244982517080559":"Single_CN_EGFamp",
-"120240429832530559":"2602_tr_Product_spa_Gif","120242792354600559":"PROMO_US_PDRNamp",
-"120240085113230559":"2602_tr_Product_spa_KR","120243204377180559":"2604_tr_Collab_spa",
-"120244685763480559":"Promo_US_Kojicamp","120240454101530559":"2603_tr_Product_spa_pic",
-"120246295720450528":"2604_tr_Single_spa","120248436940940528":"TEST_US_ccc",
-"120246585000380528":"2604_tr_Single_spa_2","120247443261800528":"TEST_US_spa",
-"120248156020600528":"TEST_US_EGFAmp","120246534641960528":"2604_tr_Single_spa_Espanol",
-"120249717215300528":"TEST_US_serum"};
-// [acc, adName, campaignId, status, spend, impressions, linkClicks]
+// ===== DATA (Meta Marketing API, 2026-05-05 ~ 2026-06-03, generated 2026-06-04) =====
+// d=MM-DD, sp=spend, im=impressions, lc=link clicks
+const MAIN_D = [
+  {d:"05-05",sp:2978124,im:238219,lc:8147},{d:"05-06",sp:2576749,im:180025,lc:6965},
+  {d:"05-07",sp:3079625,im:230227,lc:8354},{d:"05-08",sp:3952647,im:299074,lc:10751},
+  {d:"05-09",sp:2757907,im:197239,lc:7811},{d:"05-10",sp:3415487,im:332866,lc:10030},
+  {d:"05-11",sp:3507683,im:304988,lc:9699},{d:"05-12",sp:2697938,im:203428,lc:7283},
+  {d:"05-13",sp:2712955,im:258169,lc:6893},{d:"05-14",sp:1418904,im:99307,lc:4249},
+  {d:"05-15",sp:1064472,im:76688,lc:3697},{d:"05-16",sp:990783,im:71357,lc:3294},
+  {d:"05-17",sp:971036,im:70238,lc:3383},{d:"05-18",sp:1052524,im:80563,lc:3494},
+  {d:"05-19",sp:1496935,im:141030,lc:4756},{d:"05-20",sp:1341464,im:108229,lc:4407},
+  {d:"05-21",sp:974659,im:67167,lc:3223},{d:"05-22",sp:1823171,im:158464,lc:4872},
+  {d:"05-23",sp:2643017,im:248140,lc:7212},{d:"05-24",sp:3132228,im:215898,lc:8808},
+  {d:"05-25",sp:2664386,im:156809,lc:8002},{d:"05-26",sp:2612383,im:184934,lc:7905},
+  {d:"05-27",sp:3696757,im:327387,lc:11902},{d:"05-28",sp:4416855,im:305221,lc:13738},
+  {d:"05-29",sp:4574351,im:280947,lc:14151},{d:"05-30",sp:4503916,im:268960,lc:11914},
+  {d:"05-31",sp:4955233,im:304786,lc:13317},{d:"06-01",sp:4238065,im:264993,lc:10782},
+  {d:"06-02",sp:3199865,im:250421,lc:8214},{d:"06-03",sp:2579046,im:215464,lc:7204}
+];
+const BELLA_D = [
+  {d:"05-05",sp:104053,im:7275,lc:634},{d:"05-06",sp:101754,im:8427,lc:897},
+  {d:"05-07",sp:79757,im:6669,lc:669},{d:"05-08",sp:116350,im:9507,lc:869},
+  {d:"05-09",sp:97471,im:7464,lc:795},{d:"05-10",sp:113998,im:9519,lc:991},
+  {d:"05-11",sp:77307,im:6529,lc:585},{d:"05-12",sp:49728,im:3490,lc:318},
+  {d:"05-13",sp:58997,im:4234,lc:357},{d:"05-14",sp:48131,im:3637,lc:364},
+  {d:"05-15",sp:50855,im:3791,lc:341},{d:"05-16",sp:71073,im:4871,lc:401},
+  {d:"05-17",sp:68105,im:4918,lc:431},{d:"05-18",sp:59222,im:4260,lc:355},
+  {d:"05-19",sp:58855,im:3876,lc:351},{d:"05-20",sp:72212,im:5450,lc:519},
+  {d:"05-21",sp:63259,im:4703,lc:418},{d:"05-22",sp:60989,im:4144,lc:363},
+  {d:"05-23",sp:62577,im:4344,lc:366},{d:"05-24",sp:71820,im:4967,lc:436},
+  {d:"05-25",sp:85998,im:6138,lc:494},{d:"05-26",sp:89522,im:6772,lc:504},
+  {d:"05-27",sp:82269,im:6803,lc:500},{d:"05-28",sp:99342,im:8158,lc:534},
+  {d:"05-29",sp:165238,im:14178,lc:848},{d:"05-30",sp:107212,im:8747,lc:574},
+  {d:"05-31",sp:127945,im:10255,lc:586},{d:"06-01",sp:115991,im:9389,lc:524},
+  {d:"06-02",sp:103855,im:8408,lc:542},{d:"06-03",sp:161408,im:11826,lc:986}
+];
+// 캠페인 누적 30d: a=account(M/B), st=status, ob=objective
+const CAMPS = [
+  {name:"Tier2_Landing_Home",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:7243708,im:683566,lc:22779},
+  {name:"2605_tr_Retargeting",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:6480773,im:653723,lc:19150},
+  {name:"MAIN_US_spa_pic",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:6468404,im:899178,lc:17045},
+  {name:"MAIN_KR_ccc_greentomato_video",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:6300101,im:315184,lc:12395},
+  {name:"2604_tr_Single_ccc_CN",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:5280026,im:306540,lc:14411},
+  {name:"MAIN_CN_spa_video",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:4780305,im:337823,lc:10379},
+  {name:"2603_AMZ_BridgePage",a:"M",st:"ACTIVE",ob:"OUTCOME_SALES",sp:4704647,im:109474,lc:5712},
+  {name:"2504_tr_Collab",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:4295882,im:212283,lc:12575},
+  {name:"MAIN_KR_ccc_video",a:"M",st:"PAUSED",ob:"LINK_CLICKS",sp:2799921,im:119918,lc:5387},
+  {name:"Single_ccc_CN",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1941355,im:118441,lc:4261},
+  {name:"2602_tr_Product_spa_video2",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1908237,im:158358,lc:5871},
+  {name:"2604_tr_Single_spa_CN",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1857725,im:127455,lc:4921},
+  {name:"Single_US_EGFamp",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1805144,im:126498,lc:7309},
+  {name:"MAIN_KR_spa_pic",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1795310,im:129224,lc:4659},
+  {name:"Single_US_spa",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1759067,im:177211,lc:4711},
+  {name:"2605_tr_Collab",a:"M",st:"PAUSED",ob:"LINK_CLICKS",sp:1642968,im:117157,lc:8262},
+  {name:"Tier3_TEST_ccc",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1613015,im:149070,lc:7881},
+  {name:"2604_tr_Single_spa_CN_2",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1499822,im:92442,lc:3883},
+  {name:"Single_US_ccc",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1425364,im:98458,lc:5612},
+  {name:"2510_tr_Collab",a:"M",st:"ACTIVE",ob:"LINK_CLICKS",sp:1316344,im:78835,lc:4691},
+  {name:"2604_tr_Single_spa",a:"B",st:"ACTIVE",ob:"LINK_CLICKS",sp:1032639,im:76407,lc:6866},
+  {name:"TEST_US_ccc",a:"B",st:"ACTIVE",ob:"LINK_CLICKS",sp:750451,im:63465,lc:3784},
+  {name:"2604_tr_Single_spa_2",a:"B",st:"PAUSED",ob:"LINK_CLICKS",sp:545666,im:36611,lc:3430},
+  {name:"TEST_US_spa",a:"B",st:"PAUSED",ob:"LINK_CLICKS",sp:115219,im:9525,lc:702},
+  {name:"TEST_US_EGFAmp",a:"B",st:"ACTIVE",ob:"LINK_CLICKS",sp:93339,im:7040,lc:554},
+  {name:"2604_tr_Single_spa_Espanol",a:"B",st:"PAUSED",ob:"LINK_CLICKS",sp:58098,im:7385,lc:1061},
+  {name:"TEST_US_serum",a:"B",st:"ACTIVE",ob:"LINK_CLICKS",sp:29881,im:2316,lc:155}
+];
 const ADS = [
-["main","2603_AMZ_BridgePage_spa","120240594379160559","ACTIVE",4704637,109473,5712],
-["main","260504_Meta_story_AMZ_retargeting_mothersday21","120243846710340559","ACTIVE",4541354,460032,14456],
-["main","2603_Product_spa_0316_spa_lightingdeal_Meta","120241490584890559","ACTIVE",4537007,584231,11035],
-["main","260424_Meta_pic_0422_sb_1","120243357172150559","ACTIVE",4343887,410105,12930],
-["main","2504_serum_tr_val","120222064753510559","ACTIVE",4295882,212283,12575],
-["main","2603_Product_ccc_0320_AMZ_finally_Meta","120241417955560559","ACTIVE",3334355,152007,6604],
-["main","2603_Product_spa_TW_260304_PAAO_IkeharaEmi_Meta","120241191004880559","ACTIVE",3330741,222582,7180],
-["main","260422_Meta_reedit_TW_0422_KR_CNchange_ccc_eye","120243206238630559","ACTIVE",3011758,178478,7225],
-["main","2603_Product_ccc_0303_RadioFrequency_KR_Meta","120240561439880559","PAUSED",2673916,114074,5166],
-["main","260424_Meta_pic_0423_best","120243357172150559","PAUSED",2665275,226555,9032],
-["main","2603_Product_tomato_0325_AMZ_KR_greentomato_Meta","120241417955560559","ACTIVE",2128808,121322,4378],
-["main","2602_spa_Product_0221_spa_review_Meta","120240386521410559","ACTIVE",1908237,158358,5871],
-["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye","120243206238630559","PAUSED",1900777,104531,6041],
-["main","2603_Product_spa_0320_m_sa_hj_0313_Meta","120241304878420559","ACTIVE",1795267,129222,4659],
-["main","2602_Product_spa_0226_OneDrop_SnatchedSkin_cy_Meta","120241490584890559","PAUSED",1673368,278797,5358],
-["main","259_serum_tr_larlarlee","120233288536990559","ACTIVE",1316344,78835,4691],
-["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_pharmacy","120245553596360559","ACTIVE",1098765,74170,2332],
-["main","2603_Product_spa_TW_260316_PAAT_TsengChungwei_Meta","120241191004880559","ACTIVE",1009573,71222,2200],
-["main","2512_cgm_tr_officially.val","120238700090740559","ACTIVE",971427,62661,4542],
-["main","260528_Meta_pic_0528_spa_buy2get1_CleanBOGO","120245630627510559","ACTIVE",947610,84130,2594],
-["main","260504_Meta_story_AMZ_retargeting_mothersday3","120243846710340559","PAUSED",933109,88554,2192],
-["main","260522_Meta_pic_0521_CCC_Prescriptions_review_Tri-Luma","120245273809200559","ACTIVE",919028,56150,2835],
-["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye (2)","120245553596360559","ACTIVE",842541,44269,1929],
-["main","2603_Product_ccc_0320_AMZ_secret midface_Meta","120241417955560559","PAUSED",836935,41854,1413],
-["main","2602_spa_Product_0220_SINGLE_SilkPep_GrabTheGlow_v1_Meta","120240429832530559","ACTIVE",793654,37631,1539],
-["main","260504_Meta_story_AMZ_retargeting_mothersday22","120243846710340559","PAUSED",663507,67567,1790],
-["main","260529_Meta_pic_0529_spa_buy2get_1_Chipotle","120245719400960559","ACTIVE",647378,48820,2119],
-["main","260520_Meta_pic_0520_EGF_review_skinbooster","120244814108500559","ACTIVE",639601,35360,2843],
-["main","260422_Meta_reedit_TW_0422_KR_CNchange_spa_ba1","120243073903220559","PAUSED",592283,47845,1593],
-["main","260418_Meta_Collab_spa_Affiliate_allure_fashion","120244123107460559","PAUSED",563897,32656,4895],
-["bella","260421_Meta_spa_ttshopvideo_7623402569481719070","120246295720450528","ACTIVE",890684,64015,5391],
-["bella","260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_withoutBA","120248436940940528","PAUSED",292490,23443,1257],
-["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen3","120246585000380528","PAUSED",163676,10775,1027],
-["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_AsianMale","120248436940940528","ACTIVE",144214,12688,701],
-["bella","260421_Meta_spa_ttshopvideo_7628758960274689310","120246295720450528","PAUSED",141939,12390,1475],
-["bella","260423_Single_Meta_spa_7622759295045750047","120246585000380528","PAUSED",140533,10686,1067],
-["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen4","120246585000380528","PAUSED",125955,8021,709],
-["bella","260529_Video_AITools_ccc_US_0529_ccc_Dark_patches_elbows","120248436940940528","ACTIVE",89248,6689,636],
-["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen2","120246585000380528","PAUSED",87690,5487,472],
-["bella","260507_Video_AITools_spa_US_0507_ai_costco_v2","120247443261800528","PAUSED",75847,5971,470],
-["bella","260515_AIVidoe_AITools_EGFAmp_US_0514_EGFamp_USEN_POV_14DayNeck","120248156020600528","PAUSED",59031,4793,425],
-["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteMale","120248436940940528","PAUSED",58495,5220,241],
-["bella","260424_Single_Meta_spa_spanish_7600243420115897630","120246534641960528","PAUSED",58098,7385,1061],
-["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_WhiteMale","120248436940940528","PAUSED",51502,5591,274],
-["bella","260515_AIVidoe_AITools_ccc_US_0512_SBE_CapCrm_USEN_HowTo_DermNoBurn","120248436940940528","PAUSED",48794,3959,362],
-["bella","260507_Video_AITools_spa_US_0507_ai_costco_v1","120247443261800528","PAUSED",38556,3477,228],
-["bella","260602_Video_AITools_EGFAmp_US_0601_EGFamp_Iamaraisin","120248156020600528","ACTIVE",34308,2247,129],
-["bella","260602_Video_AITools_serum_US_0601_serum_Iamaraisin","120249717215300528","ACTIVE",29881,2316,155],
-["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen","120246585000380528","PAUSED",27812,1642,155],
-["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_LatinoMale","120248436940940528","PAUSED",22288,2018,146],
-["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackMale","120248436940940528","PAUSED",18900,1720,68],
-["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackFemale","120248436940940528","PAUSED",10519,835,45],
-["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_Female","120248436940940528","PAUSED",8694,741,27],
-["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteFemale","120248436940940528","PAUSED",4635,507,24],
-["bella","260507_Video_AITools_spa_US_0507_ai_meditherapy_model_changed","120247443261800528","PAUSED",816,77,4],
-["bella","260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_BA","120248436940940528","ACTIVE",628,52,3]];
+  {name:"2603_AMZ_BridgePage_spa",camp:"2603_AMZ_BridgePage",a:"M",st:"ACTIVE",sp:4704637,im:109473,lc:5712},
+  {name:"260504_Meta_story_AMZ_retargeting_mothersday21",camp:"2605_tr_Retargeting",a:"M",st:"ACTIVE",sp:4541354,im:460032,lc:14456},
+  {name:"2603_Product_spa_0316_spa_lightingdeal_Meta",camp:"MAIN_US_spa_pic",a:"M",st:"ACTIVE",sp:4537007,im:584231,lc:11035},
+  {name:"260424_Meta_pic_0422_sb_1",camp:"Tier2_Landing_Home",a:"M",st:"ACTIVE",sp:4343887,im:410105,lc:12930},
+  {name:"2504_serum_tr_val",camp:"2504_tr_Collab",a:"M",st:"ACTIVE",sp:4295875,im:212282,lc:12575},
+  {name:"2603_Product_ccc_0320_AMZ_finally_Meta",camp:"MAIN_KR_ccc_greentomato_video",a:"M",st:"ACTIVE",sp:3334355,im:152007,lc:6604},
+  {name:"2603_Product_spa_TW_260304_PAAO_IkeharaEmi_Meta",camp:"MAIN_CN_spa_video",a:"M",st:"ACTIVE",sp:3330741,im:222582,lc:7180},
+  {name:"260422_Meta_reedit_TW_0422_KR_CNchange_ccc_eye",camp:"2604_tr_Single_ccc_CN",a:"M",st:"ACTIVE",sp:3011758,im:178478,lc:7225},
+  {name:"2603_Product_ccc_0303_RadioFrequency_KR_Meta",camp:"MAIN_KR_ccc_video",a:"M",st:"PAUSED",sp:2673916,im:114074,lc:5166},
+  {name:"260424_Meta_pic_0423_best",camp:"Tier2_Landing_Home",a:"M",st:"PAUSED",sp:2665275,im:226555,lc:9032},
+  {name:"2603_Product_tomato_0325_AMZ_KR_greentomato_Meta",camp:"MAIN_KR_ccc_greentomato_video",a:"M",st:"ACTIVE",sp:2128808,im:121322,lc:4378},
+  {name:"2602_spa_Product_0221_spa_review_Meta",camp:"2602_tr_Product_spa_video2",a:"M",st:"ACTIVE",sp:1908229,im:158357,lc:5871},
+  {name:"260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye",camp:"2604_tr_Single_ccc_CN",a:"M",st:"PAUSED",sp:1900777,im:104531,lc:6041},
+  {name:"2603_Product_spa_0320_m_sa_hj_0313_Meta",camp:"MAIN_KR_spa_pic",a:"M",st:"ACTIVE",sp:1795267,im:129222,lc:4659},
+  {name:"2602_Product_spa_0226_OneDrop_SnatchedSkin_cy_Meta",camp:"MAIN_US_spa_pic",a:"M",st:"PAUSED",sp:1673368,im:278797,lc:5358},
+  {name:"259_serum_tr_larlarlee",camp:"2510_tr_Collab",a:"M",st:"ACTIVE",sp:1316344,im:78835,lc:4691},
+  {name:"260423_Meta_reedit_TW_0423_KR_CNchange_ccc_pharmacy",camp:"Single_ccc_CN",a:"M",st:"ACTIVE",sp:1098765,im:74170,lc:2332},
+  {name:"2603_Product_spa_TW_260316_PAAT_TsengChungwei_Meta",camp:"MAIN_CN_spa_video",a:"M",st:"ACTIVE",sp:1009573,im:71222,lc:2200},
+  {name:"2512_cgm_tr_officially.val",camp:"2601_tr_Collab",a:"M",st:"ACTIVE",sp:971427,im:62661,lc:4542},
+  {name:"260528_Meta_pic_0528_spa_buy2get1_CleanBOGO",camp:"Single_US_spa",a:"M",st:"ACTIVE",sp:947610,im:84130,lc:2594},
+  {name:"260504_Meta_story_AMZ_retargeting_mothersday3",camp:"2605_tr_Retargeting",a:"M",st:"PAUSED",sp:933109,im:88554,lc:2192},
+  {name:"260522_Meta_pic_0521_CCC_Prescriptions_review_Tri-Luma",camp:"Single_US_ccc",a:"M",st:"ACTIVE",sp:919028,im:56150,lc:2835},
+  {name:"260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye",camp:"Single_ccc_CN",a:"M",st:"ACTIVE",sp:842541,im:44269,lc:1929},
+  {name:"2603_Product_ccc_0320_AMZ_secret_midface_Meta",camp:"MAIN_KR_ccc_greentomato_video",a:"M",st:"PAUSED",sp:836935,im:41854,lc:1413},
+  {name:"2602_spa_Product_0220_SINGLE_SilkPep_GrabTheGlow_v1_Meta",camp:"2602_tr_Product_spa_Gif",a:"M",st:"ACTIVE",sp:793654,im:37631,lc:1539},
+  {name:"260504_Meta_story_AMZ_retargeting_mothersday22",camp:"2605_tr_Retargeting",a:"M",st:"PAUSED",sp:663507,im:67567,lc:1790},
+  {name:"260529_Meta_pic_0529_spa_buy2get_1_Chipotle",camp:"Single_CN_spa",a:"M",st:"ACTIVE",sp:647378,im:48820,lc:2119},
+  {name:"260520_Meta_pic_0520_EGF_review_skinbooster",camp:"Single_US_EGFamp",a:"M",st:"ACTIVE",sp:639601,im:35360,lc:2843},
+  {name:"260422_Meta_reedit_TW_0422_KR_CNchange_spa_ba1",camp:"2604_tr_Single_spa_CN",a:"M",st:"PAUSED",sp:592283,im:47845,lc:1593},
+  {name:"260418_Meta_Collab_spa_Affiliate_allure_fashion",camp:"2605_tr_Collab",a:"M",st:"PAUSED",sp:563897,im:32656,lc:4895},
+  {name:"260421_Meta_spa_ttshopvideo_7623402569481719070",camp:"2604_tr_Single_spa",a:"B",st:"ACTIVE",sp:890700,im:64017,lc:5391},
+  {name:"260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_withoutBA",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:292490,im:23443,lc:1257},
+  {name:"260428_Single_Meta_spa_tiktok_AIVideo_kitchen3",camp:"2604_tr_Single_spa_2",a:"B",st:"PAUSED",sp:163676,im:10775,lc:1027},
+  {name:"260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_AsianMale",camp:"TEST_US_ccc",a:"B",st:"ACTIVE",sp:144214,im:12688,lc:701},
+  {name:"260421_Meta_spa_ttshopvideo_7628758960274689310",camp:"2604_tr_Single_spa",a:"B",st:"PAUSED",sp:141939,im:12390,lc:1475},
+  {name:"260423_Single_Meta_spa_7622759295045750047",camp:"2604_tr_Single_spa_2",a:"B",st:"PAUSED",sp:140533,im:10686,lc:1067},
+  {name:"260428_Single_Meta_spa_tiktok_AIVideo_kitchen4",camp:"2604_tr_Single_spa_2",a:"B",st:"PAUSED",sp:125955,im:8021,lc:709},
+  {name:"260529_Video_AITools_ccc_US_0529_ccc_Dark_patches_elbows",camp:"TEST_US_ccc",a:"B",st:"ACTIVE",sp:89292,im:6691,lc:636},
+  {name:"260428_Single_Meta_spa_tiktok_AIVideo_kitchen2",camp:"2604_tr_Single_spa_2",a:"B",st:"PAUSED",sp:87690,im:5487,lc:472},
+  {name:"260507_Video_AITools_spa_US_0507_ai_costco_v2",camp:"TEST_US_spa",a:"B",st:"PAUSED",sp:75847,im:5971,lc:470},
+  {name:"260515_AIVidoe_AITools_EGFAmp_US_0514_EGFamp_USEN_POV_14DayNeck",camp:"TEST_US_EGFAmp",a:"B",st:"PAUSED",sp:59031,im:4793,lc:425},
+  {name:"260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteMale",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:58495,im:5220,lc:241},
+  {name:"260424_Single_Meta_spa_spanish_7600243420115897630",camp:"2604_tr_Single_spa_Espanol",a:"B",st:"PAUSED",sp:58098,im:7385,lc:1061},
+  {name:"260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_WhiteMale",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:51502,im:5591,lc:274},
+  {name:"260515_AIVidoe_AITools_ccc_US_0512_SBE_CapCrm_USEN_HowTo_DermNoBurn",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:48794,im:3959,lc:362},
+  {name:"260507_Video_AITools_spa_US_0507_ai_costco_v1",camp:"TEST_US_spa",a:"B",st:"PAUSED",sp:38556,im:3477,lc:228},
+  {name:"260602_Video_AITools_EGFAmp_US_0601_EGFamp_Iamaraisin",camp:"TEST_US_EGFAmp",a:"B",st:"ACTIVE",sp:34308,im:2247,lc:129},
+  {name:"260602_Video_AITools_serum_US_0601_serum_Iamaraisin",camp:"TEST_US_serum",a:"B",st:"ACTIVE",sp:29881,im:2316,lc:155},
+  {name:"260428_Single_Meta_spa_tiktok_AIVideo_kitchen",camp:"2604_tr_Single_spa_2",a:"B",st:"PAUSED",sp:27812,im:1642,lc:155},
+  {name:"260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_LatinoMale",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:22288,im:2018,lc:146},
+  {name:"260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackMale",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:18900,im:1720,lc:68},
+  {name:"260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackFemale",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:10519,im:835,lc:45},
+  {name:"260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_Female",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:8694,im:741,lc:27},
+  {name:"260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteFemale",camp:"TEST_US_ccc",a:"B",st:"PAUSED",sp:4635,im:507,lc:24},
+  {name:"260507_Video_AITools_spa_US_0507_ai_meditherapy_model_changed",camp:"TEST_US_spa",a:"B",st:"PAUSED",sp:816,im:77,lc:4},
+  {name:"260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_BA",camp:"TEST_US_ccc",a:"B",st:"ACTIVE",sp:628,im:52,lc:3}
+];
 
-const BLUE = '#378ADD', PINK = '#D4537E';
-const won = v => '₩' + Math.round(v).toLocaleString('ko-KR');
-const fmtShort = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v;
-let from = '2026-05-05', to = '2026-06-03';
-let accFilter = 'all', statusFilter = 'ALL';
-let charts = {};
+// ===== UTILS / STATE =====
+const krw = n => '₩' + new Intl.NumberFormat('ko-KR').format(Math.round(n));
+const num = n => new Intl.NumberFormat('ko-KR').format(Math.round(n));
+const pct = n => (isFinite(n)? n.toFixed(2):'0.00') + '%';
+const Y = '2026-';
+const MIN='2026-05-05', MAX='2026-06-03';
+let fromD = MIN, toD = MAX, acct = 'ALL', campF = 'ALL', adF = 'ALL';
+const charts = {};
+const inR = r => (Y+r.d) >= fromD && (Y+r.d) <= toD;
 
-function rows(arr) { return arr.filter(r => r[0] >= from && r[0] <= to); }
-function sum(arr, i) { return arr.reduce((a, r) => a + r[i], 0); }
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),cfg); }
 
-function renderKpis() {
-  const m = rows(MAIN), b = rows(BELLA);
-  const use = accFilter === 'main' ? [m] : accFilter === 'bella' ? [b] : [m, b];
-  const spend = use.reduce((a, x) => a + sum(x, 1), 0);
-  const imp = use.reduce((a, x) => a + sum(x, 2), 0);
-  const clk = use.reduce((a, x) => a + sum(x, 3), 0);
-  const pur = use.reduce((a, x) => a + sum(x, 4), 0);
-  const sales = use.flat().reduce((a, r) => a + r[1] * r[5] / 100, 0);
-  const k = [
-    ['Total Spend', won(spend), ''],
-    ['Link Clicks', clk.toLocaleString(), 'impressions ' + imp.toLocaleString()],
-    ['Avg CTR (link)', imp ? (clk/imp*100).toFixed(2)+'%' : '—', 'link clicks / impressions'],
-    ['Avg CPC (link)', clk ? won(spend/clk) : '—', 'spend / link clicks'],
-    ['Meta Purchases', pur + '건', 'pixel omni_purchase'],
-    ['Meta ROAS', spend ? (sales/spend*100).toFixed(2)+'%' : '—', 'pixel 매출 ÷ spend'],
-    ['Amazon Sales', '—', 'Amazon Attribution 미연동'],
-    ['Amazon DPV / ATC', '—', 'Amazon Attribution 미연동']
-  ];
-  document.getElementById('kpis').innerHTML = k.map(x =>
-    '<div class="kpi"><p class="l">'+x[0]+'</p><p class="v">'+x[1]+'</p>'+(x[2]?'<p class="s">'+x[2]+'</p>':'')+'</div>').join('');
+function render(){
+  document.getElementById('rng').textContent = fromD+' ~ '+toD+' · '+(acct==='ALL'?'Main+Bella':acct==='M'?'Main only':'Bella only');
+  document.getElementById('f').value = fromD; document.getElementById('t').value = toD;
+  const m = MAIN_D.filter(inR), b = BELLA_D.filter(inR);
+  const rows = acct==='M'? [m] : acct==='B'? [b] : [m,b];
+  const sum = k => rows.flat().reduce((a,d)=>a+d[k],0);
+  const sp=sum('sp'), im=sum('im'), lc=sum('lc');
+  document.getElementById('kSp').textContent = krw(sp);
+  document.getElementById('kLc').textContent = num(lc);
+  document.getElementById('kIm').textContent = 'impressions ' + num(im);
+  document.getElementById('kCtr').textContent = im? pct(lc/im*100):'—';
+  document.getElementById('kCpc').textContent = lc? krw(sp/lc):'—';
 
-  const alerts = [];
-  if (pur === 0 && spend > 0) alerts.push('선택 기간 Meta 픽셀 구매 0건 (Amazon행 트래픽 캠페인 — 픽셀 추적 불가 구조)');
-  const mlast = m[m.length-1], blast = b[b.length-1];
-  if (mlast && mlast[2] && (mlast[3]/mlast[2]*100) < 1.5) alerts.push('Main 마지막 날 CTR < 1.5%');
-  if (blast && blast[2] && (blast[3]/blast[2]*100) < 1.5) alerts.push('Bella 마지막 날 CTR < 1.5%');
-  const el = document.getElementById('alerts');
-  if (alerts.length) { el.style.display = 'block'; el.textContent = '🔔 ' + alerts.join(' · '); }
-  else el.style.display = 'none';
-}
-
-function mkChart(id, cfg) { if (charts[id]) charts[id].destroy(); charts[id] = new Chart(document.getElementById(id), cfg); }
-
-function renderCharts() {
-  const m = rows(MAIN), b = rows(BELLA);
-  const labels = m.map(r => r[0].slice(5).replace('-', '/'));
-  const showM = accFilter !== 'bella', showB = accFilter !== 'main';
-  const opts = cb => ({ responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 11 } } } },
-    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
-      y: { grid: { color: 'rgba(0,0,0,.06)' }, ticks: { callback: cb, font: { size: 10 } } } } });
-
+  const lbl = m.map(d=>d.d);
   const ds = [];
-  if (showM) ds.push({ label: 'Main 4233', data: m.map(r => r[1]), backgroundColor: BLUE, stack: 's' });
-  if (showB) ds.push({ label: 'Bella 7831', data: b.map(r => r[1]), backgroundColor: PINK, stack: 's' });
-  mkChart('cSpend', { type: 'bar', data: { labels, datasets: ds }, options: opts(fmtShort) });
+  if (acct!=='B') ds.push({label:'Main 4233', data:m.map(d=>d.sp), backgroundColor:'#0284c7cc', borderRadius:3, stack:'s'});
+  if (acct!=='M') ds.push({label:'Bella 7831', data:b.map(d=>d.sp), backgroundColor:'#db2777cc', borderRadius:3, stack:'s'});
+  mk('cSpend',{type:'bar',data:{labels:lbl,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+krw(c.parsed.y)}}},
+      scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>(v/1e6).toFixed(1)+'M'}}}}});
 
-  const line = (data, color, dash) => ({ label: dash ? 'Bella 7831' : 'Main 4233', data, borderColor: color,
-    backgroundColor: color, borderDash: dash ? [6,4] : [], pointRadius: 2, tension: .3, fill: false });
-  const ctrDs = [], cpcDs = [];
-  if (showM) { ctrDs.push(line(m.map(r => r[2] ? +(r[3]/r[2]*100).toFixed(2) : 0), BLUE, false));
-    cpcDs.push(line(m.map(r => r[3] ? Math.round(r[1]/r[3]) : 0), BLUE, false)); }
-  if (showB) { ctrDs.push(line(b.map(r => r[2] ? +(r[3]/r[2]*100).toFixed(2) : 0), PINK, true));
-    cpcDs.push(line(b.map(r => r[3] ? Math.round(r[1]/r[3]) : 0), PINK, true)); }
-  mkChart('cCtr', { type: 'line', data: { labels, datasets: ctrDs }, options: opts(v => v + '%') });
-  mkChart('cCpc', { type: 'line', data: { labels, datasets: cpcDs }, options: opts(v => '₩' + v) });
+  const ctrDs=[], cpcDs=[];
+  if (acct!=='B'){
+    ctrDs.push({label:'Main CTR(link)',data:m.map(d=>d.im?d.lc/d.im*100:0),borderColor:'#0284c7',backgroundColor:'#0284c722',borderWidth:2.2,tension:.3,pointRadius:2.5});
+    cpcDs.push({label:'Main CPC(link)',data:m.map(d=>d.lc?d.sp/d.lc:0),borderColor:'#0284c7',borderWidth:2.2,tension:.3,pointRadius:2.5});
+  }
+  if (acct!=='M'){
+    ctrDs.push({label:'Bella CTR(link)',data:b.map(d=>d.im?d.lc/d.im*100:0),borderColor:'#db2777',backgroundColor:'#db277722',borderWidth:2.2,tension:.3,pointRadius:2.5});
+    cpcDs.push({label:'Bella CPC(link)',data:b.map(d=>d.lc?d.sp/d.lc:0),borderColor:'#db2777',borderWidth:2.2,tension:.3,pointRadius:2.5});
+  }
+  mk('cCtr',{type:'line',data:{labels:lbl,datasets:ctrDs},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+pct(c.parsed.y)}}},
+      scales:{y:{title:{display:true,text:'CTR %'}}}}});
+  mk('cCpc',{type:'line',data:{labels:lbl,datasets:cpcDs},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+krw(c.parsed.y)}}},
+      scales:{y:{title:{display:true,text:'CPC ₩'}}}}});
 
-  const camps = CAMP.filter(c => accFilter === 'all' || c[0] === accFilter).slice().sort((a,b2) => b2[4]-a[4]).slice(0,20);
-  document.getElementById('campWrap').style.height = (camps.length * 24 + 80) + 'px';
-  mkChart('cCamp', { type: 'bar',
-    data: { labels: camps.map(c => c[1]), datasets: [{ label: 'Spend',
-      data: camps.map(c => c[4]), backgroundColor: camps.map(c => c[0]==='main'?BLUE:PINK) }] },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { callback: fmtShort, font: { size: 10 } } },
-        y: { ticks: { font: { size: 11 } }, grid: { display: false } } } } });
+  const top = [...CAMPS].sort((x,y)=>y.sp-x.sp).slice(0,20);
+  mk('cCamp',{type:'bar',data:{labels:top.map(c=>c.name),
+    datasets:[{label:'Spend',data:top.map(c=>c.sp),backgroundColor:top.map(c=>c.a==='M'?'#0284c7cc':'#db2777cc'),borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>krw(c.parsed.x)}}},
+      scales:{x:{ticks:{callback:v=>(v/1e6).toFixed(1)+'M'}},y:{ticks:{font:{size:10},autoSkip:false}}}}});
+
+  renderCampTable(); renderAdTable();
 }
 
-let sortKey = 'spend', sortDir = -1;
-function renderTable() {
-  const list = CAMP
-    .filter(c => accFilter === 'all' || c[0] === accFilter)
-    .filter(c => statusFilter === 'ALL' || c[2] === statusFilter)
-    .map(c => ({ acc: c[0], name: c[1], status: c[2], objective: c[3], spend: c[4], imp: c[5], clicks: c[6],
-      ctr: c[5] ? c[6]/c[5]*100 : 0, cpc: c[6] ? c[4]/c[6] : 0 }))
-    .sort((a, b) => (a[sortKey] < b[sortKey] ? 1 : -1) * sortDir * -1);
-  document.getElementById('campCount').textContent = '(' + list.length + ')';
-  document.querySelector('#campTable tbody').innerHTML = list.map(c =>
-    '<tr><td>' + c.name + '</td>' +
-    '<td><span class="tag ' + c.acc + '">' + (c.acc === 'main' ? 'Main' : 'Bella') + '</span></td>' +
-    '<td><span class="tag ' + c.status + '">' + c.status + '</span></td>' +
-    '<td>' + (c.objective === 'OUTCOME_SALES' ? '판매' : '트래픽') + '</td>' +
-    '<td>' + Math.round(c.spend).toLocaleString() + '</td>' +
-    '<td>' + c.clicks.toLocaleString() + '</td>' +
-    '<td>' + c.ctr.toFixed(2) + '</td>' +
-    '<td>' + Math.round(c.cpc).toLocaleString() + '</td></tr>').join('');
+function tagA(a){ return `<span class="tag ${a==='M'?'m':'b'}">${a==='M'?'Main':'Bella'}</span>`; }
+function pillS(s){ return `<span class="pill ${s==='ACTIVE'?'a':'p'}">${s}</span>`; }
+
+function renderCampTable(){
+  const list = CAMPS.filter(c=>campF==='ALL'||c.st===campF);
+  document.getElementById('tCamp').innerHTML =
+    `<thead><tr><th>Campaign</th><th>Account</th><th>Status</th><th>Objective</th><th class="n">Spend ₩</th><th class="n">Link Clicks</th><th class="n">CTR %</th><th class="n">CPC ₩</th></tr></thead><tbody>` +
+    list.map(c=>`<tr><td>${c.name}</td><td>${tagA(c.a)}</td><td>${pillS(c.st)}</td>
+      <td style="font-size:11px;color:#6b7280;">${c.ob}</td>
+      <td class="n">${num(c.sp)}</td><td class="n">${num(c.lc)}</td>
+      <td class="n">${pct(c.im?c.lc/c.im*100:0)}</td><td class="n">${c.lc?num(c.sp/c.lc):'—'}</td></tr>`).join('') + '</tbody>';
+}
+function renderAdTable(){
+  const list = ADS.filter(a=>adF==='ALL'||a.st===adF);
+  document.getElementById('tAds').innerHTML =
+    `<thead><tr><th>Ad</th><th>Campaign</th><th>Account</th><th>Status</th><th class="n">Spend ₩</th><th class="n">Link Clicks</th><th class="n">CTR %</th><th class="n">CPC ₩</th></tr></thead><tbody>` +
+    list.map(a=>`<tr><td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;" title="${a.name}">${a.name}</td>
+      <td style="font-size:11px;color:#6b7280;">${a.camp}</td><td>${tagA(a.a)}</td><td>${pillS(a.st)}</td>
+      <td class="n">${num(a.sp)}</td><td class="n">${num(a.lc)}</td>
+      <td class="n">${pct(a.im?a.lc/a.im*100:0)}</td><td class="n">${a.lc?num(a.sp/a.lc):'—'}</td></tr>`).join('') + '</tbody>';
 }
 
-let adStatusFilter = 'ALL', adSortKey = 'spend', adSortDir = -1;
-function renderAdsTable() {
-  const list = ADS
-    .filter(a => accFilter === 'all' || a[0] === accFilter)
-    .filter(a => adStatusFilter === 'ALL' || a[3] === adStatusFilter)
-    .map(a => ({ acc: a[0], name: a[1], camp: CNAME[a[2]] || a[2], status: a[3], spend: a[4], imp: a[5], clicks: a[6],
-      ctr: a[5] ? a[6]/a[5]*100 : 0, cpc: a[6] ? a[4]/a[6] : 0 }))
-    .sort((x, y) => (x[adSortKey] < y[adSortKey] ? 1 : -1) * adSortDir * -1);
-  document.getElementById('adCount').textContent = '(' + list.length + ')';
-  document.querySelector('#adsTable tbody').innerHTML = list.map(a =>
-    '<tr><td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;" title="' + a.name + '">' + a.name + '</td>' +
-    '<td>' + a.camp + '</td>' +
-    '<td><span class="tag ' + a.acc + '">' + (a.acc === 'main' ? 'Main' : 'Bella') + '</span></td>' +
-    '<td><span class="tag ' + a.status + '">' + a.status + '</span></td>' +
-    '<td>' + Math.round(a.spend).toLocaleString() + '</td>' +
-    '<td>' + a.clicks.toLocaleString() + '</td>' +
-    '<td>' + a.ctr.toFixed(2) + '</td>' +
-    '<td>' + Math.round(a.cpc).toLocaleString() + '</td></tr>').join('');
-}
+// ===== EVENTS =====
+document.querySelectorAll('.qd').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.qd').forEach(x=>x.classList.remove('on')); btn.classList.add('on');
+  const d = parseInt(btn.dataset.d); toD = MAX;
+  const t = new Date(MAX+'T00:00:00'); t.setDate(t.getDate()-d+1);
+  fromD = t.toISOString().substring(0,10);
+  if (fromD < MIN) fromD = MIN;
+  render();
+}));
+document.getElementById('apply').addEventListener('click',()=>{
+  const f=document.getElementById('f').value, t=document.getElementById('t').value;
+  if (f&&t&&f<=t){ fromD=f; toD=t; document.querySelectorAll('.qd').forEach(x=>x.classList.remove('on')); render(); }
+});
+document.querySelectorAll('.acct').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.acct').forEach(x=>x.classList.remove('on')); btn.classList.add('on');
+  acct = btn.dataset.a; render();
+}));
+document.querySelectorAll('#cf .btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('#cf .btn').forEach(x=>x.classList.remove('on')); btn.classList.add('on');
+  campF = btn.dataset.s; renderCampTable();
+}));
+document.querySelectorAll('#af .btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('#af .btn').forEach(x=>x.classList.remove('on')); btn.classList.add('on');
+  adF = btn.dataset.s; renderAdTable();
+}));
 
-function renderAll() { renderKpis(); renderCharts(); renderTable(); renderAdsTable(); }
-
-document.querySelectorAll('[data-r]').forEach(btn => btn.onclick = () => {
-  document.querySelectorAll('[data-r]').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  const days = +btn.dataset.r;
-  const end = new Date('2026-06-03');
-  const start = new Date(end); start.setDate(end.getDate() - days + 1);
-  from = start.toISOString().slice(0,10); if (from < '2026-05-05') from = '2026-05-05';
-  to = '2026-06-03';
-  document.getElementById('from').value = from; document.getElementById('to').value = to;
-  renderAll();
-});
-document.getElementById('from').onchange = e => { if (e.target.value) { from = e.target.value; renderAll(); } };
-document.getElementById('to').onchange = e => { if (e.target.value) { to = e.target.value; renderAll(); } };
-[['accAll','all'],['accMain','main'],['accBella','bella']].forEach(([id, v]) => {
-  document.getElementById(id).onclick = () => {
-    ['accAll','accMain','accBella'].forEach(i => document.getElementById(i).classList.remove('on'));
-    document.getElementById(id).classList.add('on');
-    accFilter = v; renderAll();
-  };
-});
-document.querySelectorAll('.st').forEach(btn => btn.onclick = () => {
-  document.querySelectorAll('.st').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on'); statusFilter = btn.dataset.s; renderTable();
-});
-document.querySelectorAll('#campTable th').forEach(th => th.onclick = () => {
-  const k = th.dataset.k; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = -1; }
-  renderTable();
-});
-document.querySelectorAll('.ast').forEach(btn => btn.onclick = () => {
-  document.querySelectorAll('.ast').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on'); adStatusFilter = btn.dataset.s; renderAdsTable();
-});
-document.querySelectorAll('#adsTable th').forEach(th => th.onclick = () => {
-  const k = th.dataset.k; if (adSortKey === k) adSortDir *= -1; else { adSortKey = k; adSortDir = -1; }
-  renderAdsTable();
-});
-document.getElementById('from').value = from;
-document.getElementById('to').value = to;
-renderAll();
+render();
 </script>
 </body>
 </html>
