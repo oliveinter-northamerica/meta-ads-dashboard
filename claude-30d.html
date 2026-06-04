@@ -91,6 +91,23 @@ footer { color: #9aa0a9; font-size: 12px; margin-top: 28px; line-height: 1.6; }
   <tbody></tbody>
 </table>
 
+<h2>All ads with spend (last 30 days, top 30 per account) <span id="adCount" style="color:#9aa0a9;font-weight:400;"></span></h2>
+<div class="controls">
+  <button class="ast on" data-s="ALL">All</button>
+  <button class="ast" data-s="ACTIVE">Active</button>
+  <button class="ast" data-s="PAUSED">Paused</button>
+</div>
+<div style="overflow-x:auto;">
+<table id="adsTable">
+  <thead><tr>
+    <th data-k="name">Ad</th><th data-k="camp">Campaign</th><th data-k="acc">Account</th>
+    <th data-k="status">Status</th><th data-k="spend">Spend ₩</th><th data-k="clicks">Link Clicks</th>
+    <th data-k="ctr">CTR %</th><th data-k="cpc">CPC ₩</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+
 <footer>
 Source: Meta Marketing API (MCP) · Generated 2026-06-04 · 구매/ROAS는 Meta 픽셀 어트리뷰션 기준(omni_purchase). 대부분 캠페인이 Amazon행 트래픽 캠페인이라 Amazon 매출·DPV·ATC는 이 데이터에 포함되지 않음 — Amazon Attribution 연동 필요. 날짜 필터는 KPI·일별 차트에 적용되며 캠페인 표는 30일 고정.
 </footer>
@@ -169,6 +186,85 @@ const CAMP = [
 ["bella","TEST_US_EGFAmp","ACTIVE","LINK_CLICKS",93339,7040,554],
 ["bella","2604_tr_Single_spa_Espanol","PAUSED","LINK_CLICKS",58098,7385,1061],
 ["bella","TEST_US_serum","ACTIVE","LINK_CLICKS",29881,2316,155]];
+
+const CNAME = {
+"120243357172150559":"Tier2_Landing_Home","120243846710340559":"2605_tr_Retargeting",
+"120241490584890559":"MAIN_US_spa_pic","120241417955560559":"MAIN_KR_ccc_greentomato_video",
+"120243206238630559":"2604_tr_Single_ccc_CN","120241191004880559":"MAIN_CN_spa_video",
+"120240594379160559":"2603_AMZ_BridgePage","120222064753510559":"2504_tr_Collab",
+"120240561439880559":"MAIN_KR_ccc_video","120245553596360559":"Single_ccc_CN",
+"120240386521410559":"2602_tr_Product_spa_video2","120243073903220559":"2604_tr_Single_spa_CN",
+"120244814108500559":"Single_US_EGFamp","120241304878420559":"MAIN_KR_spa_pic",
+"120245630627510559":"Single_US_spa","120244123107460559":"2605_tr_Collab",
+"120243645514610559":"Tier3_TEST_ccc","120242207041770559":"2604_tr_Single_spa_CN_2",
+"120245273809200559":"Single_US_ccc","120233288536990559":"2510_tr_Collab",
+"120238700090740559":"2601_tr_Collab","120245719400960559":"Single_CN_spa",
+"120241871848900559":"2604_tr_Single_serum","120244982517080559":"Single_CN_EGFamp",
+"120240429832530559":"2602_tr_Product_spa_Gif","120242792354600559":"PROMO_US_PDRNamp",
+"120240085113230559":"2602_tr_Product_spa_KR","120243204377180559":"2604_tr_Collab_spa",
+"120244685763480559":"Promo_US_Kojicamp","120240454101530559":"2603_tr_Product_spa_pic",
+"120246295720450528":"2604_tr_Single_spa","120248436940940528":"TEST_US_ccc",
+"120246585000380528":"2604_tr_Single_spa_2","120247443261800528":"TEST_US_spa",
+"120248156020600528":"TEST_US_EGFAmp","120246534641960528":"2604_tr_Single_spa_Espanol",
+"120249717215300528":"TEST_US_serum"};
+// [acc, adName, campaignId, status, spend, impressions, linkClicks]
+const ADS = [
+["main","2603_AMZ_BridgePage_spa","120240594379160559","ACTIVE",4704637,109473,5712],
+["main","260504_Meta_story_AMZ_retargeting_mothersday21","120243846710340559","ACTIVE",4541354,460032,14456],
+["main","2603_Product_spa_0316_spa_lightingdeal_Meta","120241490584890559","ACTIVE",4537007,584231,11035],
+["main","260424_Meta_pic_0422_sb_1","120243357172150559","ACTIVE",4343887,410105,12930],
+["main","2504_serum_tr_val","120222064753510559","ACTIVE",4295882,212283,12575],
+["main","2603_Product_ccc_0320_AMZ_finally_Meta","120241417955560559","ACTIVE",3334355,152007,6604],
+["main","2603_Product_spa_TW_260304_PAAO_IkeharaEmi_Meta","120241191004880559","ACTIVE",3330741,222582,7180],
+["main","260422_Meta_reedit_TW_0422_KR_CNchange_ccc_eye","120243206238630559","ACTIVE",3011758,178478,7225],
+["main","2603_Product_ccc_0303_RadioFrequency_KR_Meta","120240561439880559","PAUSED",2673916,114074,5166],
+["main","260424_Meta_pic_0423_best","120243357172150559","PAUSED",2665275,226555,9032],
+["main","2603_Product_tomato_0325_AMZ_KR_greentomato_Meta","120241417955560559","ACTIVE",2128808,121322,4378],
+["main","2602_spa_Product_0221_spa_review_Meta","120240386521410559","ACTIVE",1908237,158358,5871],
+["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye","120243206238630559","PAUSED",1900777,104531,6041],
+["main","2603_Product_spa_0320_m_sa_hj_0313_Meta","120241304878420559","ACTIVE",1795267,129222,4659],
+["main","2602_Product_spa_0226_OneDrop_SnatchedSkin_cy_Meta","120241490584890559","PAUSED",1673368,278797,5358],
+["main","259_serum_tr_larlarlee","120233288536990559","ACTIVE",1316344,78835,4691],
+["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_pharmacy","120245553596360559","ACTIVE",1098765,74170,2332],
+["main","2603_Product_spa_TW_260316_PAAT_TsengChungwei_Meta","120241191004880559","ACTIVE",1009573,71222,2200],
+["main","2512_cgm_tr_officially.val","120238700090740559","ACTIVE",971427,62661,4542],
+["main","260528_Meta_pic_0528_spa_buy2get1_CleanBOGO","120245630627510559","ACTIVE",947610,84130,2594],
+["main","260504_Meta_story_AMZ_retargeting_mothersday3","120243846710340559","PAUSED",933109,88554,2192],
+["main","260522_Meta_pic_0521_CCC_Prescriptions_review_Tri-Luma","120245273809200559","ACTIVE",919028,56150,2835],
+["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye (2)","120245553596360559","ACTIVE",842541,44269,1929],
+["main","2603_Product_ccc_0320_AMZ_secret midface_Meta","120241417955560559","PAUSED",836935,41854,1413],
+["main","2602_spa_Product_0220_SINGLE_SilkPep_GrabTheGlow_v1_Meta","120240429832530559","ACTIVE",793654,37631,1539],
+["main","260504_Meta_story_AMZ_retargeting_mothersday22","120243846710340559","PAUSED",663507,67567,1790],
+["main","260529_Meta_pic_0529_spa_buy2get_1_Chipotle","120245719400960559","ACTIVE",647378,48820,2119],
+["main","260520_Meta_pic_0520_EGF_review_skinbooster","120244814108500559","ACTIVE",639601,35360,2843],
+["main","260422_Meta_reedit_TW_0422_KR_CNchange_spa_ba1","120243073903220559","PAUSED",592283,47845,1593],
+["main","260418_Meta_Collab_spa_Affiliate_allure_fashion","120244123107460559","PAUSED",563897,32656,4895],
+["bella","260421_Meta_spa_ttshopvideo_7623402569481719070","120246295720450528","ACTIVE",890684,64015,5391],
+["bella","260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_withoutBA","120248436940940528","PAUSED",292490,23443,1257],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen3","120246585000380528","PAUSED",163676,10775,1027],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_AsianMale","120248436940940528","ACTIVE",144214,12688,701],
+["bella","260421_Meta_spa_ttshopvideo_7628758960274689310","120246295720450528","PAUSED",141939,12390,1475],
+["bella","260423_Single_Meta_spa_7622759295045750047","120246585000380528","PAUSED",140533,10686,1067],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen4","120246585000380528","PAUSED",125955,8021,709],
+["bella","260529_Video_AITools_ccc_US_0529_ccc_Dark_patches_elbows","120248436940940528","ACTIVE",89248,6689,636],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen2","120246585000380528","PAUSED",87690,5487,472],
+["bella","260507_Video_AITools_spa_US_0507_ai_costco_v2","120247443261800528","PAUSED",75847,5971,470],
+["bella","260515_AIVidoe_AITools_EGFAmp_US_0514_EGFamp_USEN_POV_14DayNeck","120248156020600528","PAUSED",59031,4793,425],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteMale","120248436940940528","PAUSED",58495,5220,241],
+["bella","260424_Single_Meta_spa_spanish_7600243420115897630","120246534641960528","PAUSED",58098,7385,1061],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_WhiteMale","120248436940940528","PAUSED",51502,5591,274],
+["bella","260515_AIVidoe_AITools_ccc_US_0512_SBE_CapCrm_USEN_HowTo_DermNoBurn","120248436940940528","PAUSED",48794,3959,362],
+["bella","260507_Video_AITools_spa_US_0507_ai_costco_v1","120247443261800528","PAUSED",38556,3477,228],
+["bella","260602_Video_AITools_EGFAmp_US_0601_EGFamp_Iamaraisin","120248156020600528","ACTIVE",34308,2247,129],
+["bella","260602_Video_AITools_serum_US_0601_serum_Iamaraisin","120249717215300528","ACTIVE",29881,2316,155],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen","120246585000380528","PAUSED",27812,1642,155],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_LatinoMale","120248436940940528","PAUSED",22288,2018,146],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackMale","120248436940940528","PAUSED",18900,1720,68],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackFemale","120248436940940528","PAUSED",10519,835,45],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_Female","120248436940940528","PAUSED",8694,741,27],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteFemale","120248436940940528","PAUSED",4635,507,24],
+["bella","260507_Video_AITools_spa_US_0507_ai_meditherapy_model_changed","120247443261800528","PAUSED",816,77,4],
+["bella","260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_BA","120248436940940528","ACTIVE",628,52,3]];
 
 const BLUE = '#378ADD', PINK = '#D4537E';
 const won = v => '₩' + Math.round(v).toLocaleString('ko-KR');
@@ -268,7 +364,27 @@ function renderTable() {
     '<td>' + Math.round(c.cpc).toLocaleString() + '</td></tr>').join('');
 }
 
-function renderAll() { renderKpis(); renderCharts(); renderTable(); }
+let adStatusFilter = 'ALL', adSortKey = 'spend', adSortDir = -1;
+function renderAdsTable() {
+  const list = ADS
+    .filter(a => accFilter === 'all' || a[0] === accFilter)
+    .filter(a => adStatusFilter === 'ALL' || a[3] === adStatusFilter)
+    .map(a => ({ acc: a[0], name: a[1], camp: CNAME[a[2]] || a[2], status: a[3], spend: a[4], imp: a[5], clicks: a[6],
+      ctr: a[5] ? a[6]/a[5]*100 : 0, cpc: a[6] ? a[4]/a[6] : 0 }))
+    .sort((x, y) => (x[adSortKey] < y[adSortKey] ? 1 : -1) * adSortDir * -1);
+  document.getElementById('adCount').textContent = '(' + list.length + ')';
+  document.querySelector('#adsTable tbody').innerHTML = list.map(a =>
+    '<tr><td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;" title="' + a.name + '">' + a.name + '</td>' +
+    '<td>' + a.camp + '</td>' +
+    '<td><span class="tag ' + a.acc + '">' + (a.acc === 'main' ? 'Main' : 'Bella') + '</span></td>' +
+    '<td><span class="tag ' + a.status + '">' + a.status + '</span></td>' +
+    '<td>' + Math.round(a.spend).toLocaleString() + '</td>' +
+    '<td>' + a.clicks.toLocaleString() + '</td>' +
+    '<td>' + a.ctr.toFixed(2) + '</td>' +
+    '<td>' + Math.round(a.cpc).toLocaleString() + '</td></tr>').join('');
+}
+
+function renderAll() { renderKpis(); renderCharts(); renderTable(); renderAdsTable(); }
 
 document.querySelectorAll('[data-r]').forEach(btn => btn.onclick = () => {
   document.querySelectorAll('[data-r]').forEach(b => b.classList.remove('on'));
@@ -297,6 +413,14 @@ document.querySelectorAll('.st').forEach(btn => btn.onclick = () => {
 document.querySelectorAll('#campTable th').forEach(th => th.onclick = () => {
   const k = th.dataset.k; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = -1; }
   renderTable();
+});
+document.querySelectorAll('.ast').forEach(btn => btn.onclick = () => {
+  document.querySelectorAll('.ast').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); adStatusFilter = btn.dataset.s; renderAdsTable();
+});
+document.querySelectorAll('#adsTable th').forEach(th => th.onclick = () => {
+  const k = th.dataset.k; if (adSortKey === k) adSortDir *= -1; else { adSortKey = k; adSortDir = -1; }
+  renderAdsTable();
 });
 document.getElementById('from').value = from;
 document.getElementById('to').value = to;
