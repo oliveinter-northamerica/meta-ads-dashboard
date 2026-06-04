@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meta Ads Dashboard + Amazon Sales — Last 30 Days</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Malgun Gothic", Roboto, sans-serif; background: #f6f7f9; color: #16181d; margin: 0; padding: 24px; max-width: 1200px; margin-inline: auto; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 28px 0 10px; color: #2c2f36; }
+.sub { color: #71757e; font-size: 13px; margin: 0 0 18px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; font-size: 13px; }
+.controls button, .controls input, .controls select { font: inherit; padding: 6px 12px; border: 1px solid #d7dade; border-radius: 8px; background: #fff; cursor: pointer; }
+.controls button.on { background: #16181d; color: #fff; border-color: #16181d; }
+.controls .sep { width: 1px; height: 22px; background: #d7dade; margin: 0 4px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; padding: 14px 16px; }
+.kpi .l { font-size: 12px; color: #71757e; margin: 0 0 4px; }
+.kpi .v { font-size: 22px; font-weight: 650; margin: 0; letter-spacing: -0.02em; }
+.kpi .s { font-size: 11px; color: #9aa0a9; margin: 4px 0 0; }
+.kpi.amz { border-color: #9FE1CB; background: #f4fbf8; }
+.panel { background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; padding: 16px; }
+.cwrap { position: relative; width: 100%; height: 260px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 800px) { .row2 { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; overflow: hidden; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:nth-child(3), td:nth-child(3) { text-align: left; }
+th { background: #fafbfc; color: #555a63; font-weight: 600; cursor: pointer; user-select: none; }
+tr:last-child td { border-bottom: none; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.tag.ACTIVE { background: #e3f4ec; color: #156a45; }
+.tag.PAUSED { background: #f1f2f4; color: #6b6f78; }
+.tag.main { background: #e6f0fb; color: #185fa5; }
+.tag.bella { background: #fbeaf0; color: #993556; }
+.alertbox { background: #fdf0e6; color: #8a4a12; border-radius: 10px; padding: 10px 14px; font-size: 13px; margin: 14px 0; }
+.roas-pos { color: #156a45; font-weight: 600; }
+.roas-neg { color: #a32d2d; font-weight: 600; }
+footer { color: #9aa0a9; font-size: 12px; margin-top: 28px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h1>Meta Ads Dashboard + Amazon Sales</h1>
+<p class="sub">Main 4233 ([북미]성분에디터_아마존) + Bella EGF 7831 (AI Video) · 2026-05-05 ~ 2026-06-03 · KRW · Amazon 매출: 제품분석 시트 기준</p>
+
+<div class="controls">
+  <button data-r="1">Today</button>
+  <button data-r="7">Last 7 days</button>
+  <button data-r="14">Last 14 days</button>
+  <button data-r="30" class="on">Last 30 days</button>
+  <span class="sep"></span>
+  From: <input type="date" id="from" min="2026-05-05" max="2026-06-03">
+  To: <input type="date" id="to" min="2026-05-05" max="2026-06-03">
+  <span class="sep"></span>
+  <button id="accAll" class="on">All</button>
+  <button id="accMain">Main</button>
+  <button id="accBella">Bella</button>
+</div>
+
+<div class="kpis" id="kpis"></div>
+<div class="alertbox" id="alerts"></div>
+
+<h2>Daily Amazon Sales vs Meta Spend (시트 기준)</h2>
+<div class="panel"><div class="cwrap"><canvas id="cAmz"></canvas></div></div>
+
+<h2>Daily Amazon ROAS % (매출 ÷ 광고비, 시트 기준)</h2>
+<div class="panel"><div class="cwrap"><canvas id="cRoas"></canvas></div></div>
+
+<h2>Daily Spend (Meta)</h2>
+<div class="panel"><div class="cwrap"><canvas id="cSpend"></canvas></div></div>
+
+<div class="row2">
+  <div>
+    <h2>Daily CTR (link) %</h2>
+    <div class="panel"><div class="cwrap"><canvas id="cCtr"></canvas></div></div>
+  </div>
+  <div>
+    <h2>Daily CPC (link) ₩</h2>
+    <div class="panel"><div class="cwrap"><canvas id="cCpc"></canvas></div></div>
+  </div>
+</div>
+
+<h2>Daily breakdown (시트 ROAS) <span id="dayCount" style="color:#9aa0a9;font-weight:400;"></span></h2>
+<div style="overflow-x:auto;">
+<table id="dailyTable">
+  <thead><tr>
+    <th>Date</th><th>Amz Sales ₩</th><th>Spend ₩</th><th>ROAS</th>
+    <th>Main Sales</th><th>Main ROAS</th><th>Bella Sales</th><th>Bella ROAS</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+
+<h2>Campaign rollup (last 30 days, Meta) <span id="campCount" style="color:#9aa0a9;font-weight:400;"></span></h2>
+<div class="controls">
+  <button class="st on" data-s="ALL">All</button>
+  <button class="st" data-s="ACTIVE">Active</button>
+  <button class="st" data-s="PAUSED">Paused</button>
+</div>
+<table id="campTable">
+  <thead><tr>
+    <th data-k="name">Campaign</th><th data-k="acc">Account</th><th data-k="status">Status</th>
+    <th data-k="objective">Objective</th><th data-k="spend">Spend ₩</th><th data-k="clicks">Link Clicks</th>
+    <th data-k="ctr">CTR %</th><th data-k="cpc">CPC ₩</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>All ads with spend (last 30 days, top 30 per account) <span id="adCount" style="color:#9aa0a9;font-weight:400;"></span></h2>
+<div class="controls">
+  <button class="ast on" data-s="ALL">All</button>
+  <button class="ast" data-s="ACTIVE">Active</button>
+  <button class="ast" data-s="PAUSED">Paused</button>
+</div>
+<div style="overflow-x:auto;">
+<table id="adsTable">
+  <thead><tr>
+    <th data-k="name">Ad</th><th data-k="camp">Campaign</th><th data-k="acc">Account</th>
+    <th data-k="status">Status</th><th data-k="spend">Spend ₩</th><th data-k="clicks">Link Clicks</th>
+    <th data-k="ctr">CTR %</th><th data-k="cpc">CPC ₩</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+
+<footer>
+Source: Meta Marketing API (MCP) + 제품분석 Google Sheet · Generated 2026-06-04 · Amazon Sales/ROAS는 시트 기록 기준이며 시트 날짜는 Meta 집계 날짜와 1일 어긋날 수 있음 (시트 d ≈ Meta d+1). Meta 픽셀 구매와는 별개. 캠페인·광고 표는 Meta 30일 고정, 날짜 필터는 KPI·일별 차트·일별 표에 적용.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<script>
+// [date, spend, impressions, linkClicks, purchases, roasPct] — Meta 기준
+const MAIN = [
+["2026-05-05",2978124,238219,8147,0,0],["2026-05-06",2576749,180025,6965,0,0],
+["2026-05-07",3079625,230227,8354,0,0],["2026-05-08",3952647,299074,10751,0,0],
+["2026-05-09",2757907,197239,7811,0,0],["2026-05-10",3415487,332866,10030,1,1.66],
+["2026-05-11",3507683,304988,9699,0,0],["2026-05-12",2697938,203428,7283,1,3.38],
+["2026-05-13",2712955,258169,6893,1,6.38],["2026-05-14",1418904,99307,4249,0,0],
+["2026-05-15",1064472,76688,3697,0,0],["2026-05-16",990783,71357,3294,0,0],
+["2026-05-17",971036,70238,3383,0,0],["2026-05-18",1052524,80563,3494,0,0],
+["2026-05-19",1496935,141030,4756,0,0],["2026-05-20",1341464,108229,4407,0,0],
+["2026-05-21",974659,67167,3223,1,24],["2026-05-22",1823171,158464,4872,0,0],
+["2026-05-23",2643017,248140,7212,1,3.40],["2026-05-24",3132228,215898,8808,1,2.36],
+["2026-05-25",2664386,156809,8002,2,12],["2026-05-26",2612383,184934,7905,1,5.03],
+["2026-05-27",3696757,327387,11902,0,0],["2026-05-28",4416855,305221,13738,3,8.70],
+["2026-05-29",4574351,280947,14151,0,0],["2026-05-30",4503916,268960,11914,0,0],
+["2026-05-31",4955233,304786,13317,0,0],["2026-06-01",4238065,264993,10782,1,1.25],
+["2026-06-02",3199865,250421,8214,0,0],["2026-06-03",2579053,215465,7204,0,0]];
+const BELLA = [
+["2026-05-05",104053,7275,634,0,0],["2026-05-06",101754,8427,897,0,0],
+["2026-05-07",79757,6669,669,0,0],["2026-05-08",116350,9507,869,0,0],
+["2026-05-09",97471,7464,795,0,0],["2026-05-10",113998,9519,991,0,0],
+["2026-05-11",77307,6529,585,0,0],["2026-05-12",49728,3490,318,0,0],
+["2026-05-13",58997,4234,357,0,0],["2026-05-14",48131,3637,364,0,0],
+["2026-05-15",50855,3791,341,0,0],["2026-05-16",71073,4871,401,0,0],
+["2026-05-17",68105,4918,431,0,0],["2026-05-18",59222,4260,355,0,0],
+["2026-05-19",58855,3876,351,0,0],["2026-05-20",72212,5450,519,0,0],
+["2026-05-21",63259,4703,418,0,0],["2026-05-22",60989,4144,363,0,0],
+["2026-05-23",62577,4344,366,0,0],["2026-05-24",71820,4967,436,0,0],
+["2026-05-25",85998,6138,494,0,0],["2026-05-26",89522,6772,504,0,0],
+["2026-05-27",82269,6803,500,0,0],["2026-05-28",99342,8158,534,0,0],
+["2026-05-29",165238,14178,848,0,0],["2026-05-30",107212,8747,574,0,0],
+["2026-05-31",127945,10255,586,0,0],["2026-06-01",115991,9389,524,0,0],
+["2026-06-02",103855,8408,542,0,0],["2026-06-03",161348,11822,986,0,0]];
+// [sheetDate, totalSale, totalCost, mainSale, mainCost, bellaSale, bellaCost] — 제품분석 시트 기준
+const AMZ = [
+["2026-05-04",3667973,3082177,3535424,2978124,132549,104053],
+["2026-05-05",4327964,2678503,4228552,2576749,99412,101754],
+["2026-05-06",4553383,3159382,4495352,3079625,58031,79757],
+["2026-05-07",4417445,4068997,4186002,3952647,231442,116350],
+["2026-05-08",3706660,2855378,3681766,2757907,24894,97471],
+["2026-05-09",3399900,3529485,3375007,3415487,24894,113998],
+["2026-05-10",5246304,3584990,5159517,3507683,86787,77307],
+["2026-05-11",2276255,2747666,2243118,2697938,33137,49728],
+["2026-05-12",1721166,2771952,1596890,2712955,124276,58997],
+["2026-05-13",1339637,1467035,1307787,1418904,31850,48131],
+["2026-05-14",1257408,1115327,1147562,1064472,109846,50855],
+["2026-05-15",1212342,1061856,1212342,990783,0,71073],
+["2026-05-16",1446197,1039141,1415191,971036,31006,68105],
+["2026-05-17",1301364,1111746,1270358,1052524,31006,59222],
+["2026-05-18",1022562,1555790,985221,1496935,37340,58855],
+["2026-05-19",938246,1413676,938246,1341464,0,72212],
+["2026-05-20",1420030,1037918,1345705,974659,74326,63259],
+["2026-05-21",951921,1884160,877596,1823171,74326,60989],
+["2026-05-22",1745068,2705594,1745068,2643017,0,62577],
+["2026-05-23",2428118,3204048,2390955,3132228,37163,71820],
+["2026-05-24",2236916,2750384,2236916,2664386,0,85998],
+["2026-05-25",2327019,2701905,2327019,2612383,0,89522],
+["2026-05-26",2314912,3779026,2240764,3696757,74148,82269],
+["2026-05-27",3038455,4516197,2907697,4416855,130758,99342],
+["2026-05-28",2867012,4739589,2867012,4574351,0,165238],
+["2026-05-29",3060418,4611033,3060418,4503821,0,107212],
+["2026-05-30",3577796,5079330,3503678,4951385,74118,127945],
+["2026-05-31",2459745,4349921,2342041,4233930,117704,115991],
+["2026-06-01",1993234,3300483,1993234,3196628,0,103855],
+["2026-06-02",3283469,2740430,3247949,2579066,35520,161364]];
+// {acc, name, status, objective, spend, imp, clicks}
+const CAMP = [
+["main","Tier2_Landing_Home","ACTIVE","LINK_CLICKS",7243708,683566,22779],
+["main","2605_tr_Retargeting","ACTIVE","LINK_CLICKS",6480773,653723,19150],
+["main","MAIN_US_spa_pic","ACTIVE","LINK_CLICKS",6468404,899178,17045],
+["main","MAIN_KR_ccc_greentomato_video","ACTIVE","LINK_CLICKS",6300098,315183,12395],
+["main","2604_tr_Single_ccc_CN","ACTIVE","LINK_CLICKS",5280026,306540,14411],
+["main","MAIN_CN_spa_video","ACTIVE","LINK_CLICKS",4780200,337818,10379],
+["main","2603_AMZ_BridgePage","ACTIVE","OUTCOME_SALES",4704637,109473,5712],
+["main","2504_tr_Collab","ACTIVE","LINK_CLICKS",4295875,212282,12575],
+["main","MAIN_KR_ccc_video","PAUSED","LINK_CLICKS",2799921,119918,5387],
+["main","Single_ccc_CN","ACTIVE","LINK_CLICKS",1941306,118439,4261],
+["main","2602_tr_Product_spa_video2","ACTIVE","LINK_CLICKS",1908229,158357,5871],
+["main","2604_tr_Single_spa_CN","ACTIVE","LINK_CLICKS",1857709,127454,4921],
+["main","Single_US_EGFamp","ACTIVE","LINK_CLICKS",1805138,126497,7309],
+["main","MAIN_KR_spa_pic","ACTIVE","LINK_CLICKS",1795246,129221,4659],
+["main","Single_US_spa","ACTIVE","LINK_CLICKS",1759055,177210,4711],
+["main","2605_tr_Collab","PAUSED","LINK_CLICKS",1642968,117157,8262],
+["main","Tier3_TEST_ccc","ACTIVE","LINK_CLICKS",1612998,149068,7881],
+["main","2604_tr_Single_spa_CN_2","ACTIVE","LINK_CLICKS",1499808,92441,3883],
+["main","Single_US_ccc","ACTIVE","LINK_CLICKS",1425338,98457,5612],
+["main","2510_tr_Collab","ACTIVE","LINK_CLICKS",1316344,78835,4691],
+["main","2601_tr_Collab","ACTIVE","LINK_CLICKS",971427,62661,4542],
+["main","Single_CN_spa","ACTIVE","LINK_CLICKS",904917,70286,2807],
+["main","2604_tr_Single_serum","PAUSED","LINK_CLICKS",899038,68782,2937],
+["main","Single_CN_EGFamp","ACTIVE","LINK_CLICKS",843668,57252,2723],
+["main","2602_tr_Product_spa_Gif","ACTIVE","LINK_CLICKS",793654,37631,1539],
+["main","PROMO_US_PDRNamp","PAUSED","LINK_CLICKS",788515,65386,2227],
+["main","2602_tr_Product_spa_KR","PAUSED","LINK_CLICKS",554866,44335,1902],
+["main","2604_tr_Collab_spa","PAUSED","LINK_CLICKS",498606,39855,2341],
+["main","Promo_US_Kojicamp","PAUSED","LINK_CLICKS",497730,38970,2154],
+["main","2603_tr_Product_spa_pic","PAUSED","LINK_CLICKS",483848,33115,1883],
+["bella","2604_tr_Single_spa","ACTIVE","LINK_CLICKS",1032623,76405,6866],
+["bella","TEST_US_ccc","ACTIVE","LINK_CLICKS",750407,63463,3784],
+["bella","2604_tr_Single_spa_2","PAUSED","LINK_CLICKS",545666,36611,3430],
+["bella","TEST_US_spa","PAUSED","LINK_CLICKS",115219,9525,702],
+["bella","TEST_US_EGFAmp","ACTIVE","LINK_CLICKS",93339,7040,554],
+["bella","2604_tr_Single_spa_Espanol","PAUSED","LINK_CLICKS",58098,7385,1061],
+["bella","TEST_US_serum","ACTIVE","LINK_CLICKS",29881,2316,155]];
+
+const CNAME = {
+"120243357172150559":"Tier2_Landing_Home","120243846710340559":"2605_tr_Retargeting",
+"120241490584890559":"MAIN_US_spa_pic","120241417955560559":"MAIN_KR_ccc_greentomato_video",
+"120243206238630559":"2604_tr_Single_ccc_CN","120241191004880559":"MAIN_CN_spa_video",
+"120240594379160559":"2603_AMZ_BridgePage","120222064753510559":"2504_tr_Collab",
+"120240561439880559":"MAIN_KR_ccc_video","120245553596360559":"Single_ccc_CN",
+"120240386521410559":"2602_tr_Product_spa_video2","120243073903220559":"2604_tr_Single_spa_CN",
+"120244814108500559":"Single_US_EGFamp","120241304878420559":"MAIN_KR_spa_pic",
+"120245630627510559":"Single_US_spa","120244123107460559":"2605_tr_Collab",
+"120243645514610559":"Tier3_TEST_ccc","120242207041770559":"2604_tr_Single_spa_CN_2",
+"120245273809200559":"Single_US_ccc","120233288536990559":"2510_tr_Collab",
+"120238700090740559":"2601_tr_Collab","120245719400960559":"Single_CN_spa",
+"120241871848900559":"2604_tr_Single_serum","120244982517080559":"Single_CN_EGFamp",
+"120240429832530559":"2602_tr_Product_spa_Gif","120242792354600559":"PROMO_US_PDRNamp",
+"120240085113230559":"2602_tr_Product_spa_KR","120243204377180559":"2604_tr_Collab_spa",
+"120244685763480559":"Promo_US_Kojicamp","120240454101530559":"2603_tr_Product_spa_pic",
+"120246295720450528":"2604_tr_Single_spa","120248436940940528":"TEST_US_ccc",
+"120246585000380528":"2604_tr_Single_spa_2","120247443261800528":"TEST_US_spa",
+"120248156020600528":"TEST_US_EGFAmp","120246534641960528":"2604_tr_Single_spa_Espanol",
+"120249717215300528":"TEST_US_serum"};
+// [acc, adName, campaignId, status, spend, impressions, linkClicks]
+const ADS = [
+["main","2603_AMZ_BridgePage_spa","120240594379160559","ACTIVE",4704637,109473,5712],
+["main","260504_Meta_story_AMZ_retargeting_mothersday21","120243846710340559","ACTIVE",4541354,460032,14456],
+["main","2603_Product_spa_0316_spa_lightingdeal_Meta","120241490584890559","ACTIVE",4537007,584231,11035],
+["main","260424_Meta_pic_0422_sb_1","120243357172150559","ACTIVE",4343887,410105,12930],
+["main","2504_serum_tr_val","120222064753510559","ACTIVE",4295882,212283,12575],
+["main","2603_Product_ccc_0320_AMZ_finally_Meta","120241417955560559","ACTIVE",3334355,152007,6604],
+["main","2603_Product_spa_TW_260304_PAAO_IkeharaEmi_Meta","120241191004880559","ACTIVE",3330741,222582,7180],
+["main","260422_Meta_reedit_TW_0422_KR_CNchange_ccc_eye","120243206238630559","ACTIVE",3011758,178478,7225],
+["main","2603_Product_ccc_0303_RadioFrequency_KR_Meta","120240561439880559","PAUSED",2673916,114074,5166],
+["main","260424_Meta_pic_0423_best","120243357172150559","PAUSED",2665275,226555,9032],
+["main","2603_Product_tomato_0325_AMZ_KR_greentomato_Meta","120241417955560559","ACTIVE",2128808,121322,4378],
+["main","2602_spa_Product_0221_spa_review_Meta","120240386521410559","ACTIVE",1908237,158358,5871],
+["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye","120243206238630559","PAUSED",1900777,104531,6041],
+["main","2603_Product_spa_0320_m_sa_hj_0313_Meta","120241304878420559","ACTIVE",1795267,129222,4659],
+["main","2602_Product_spa_0226_OneDrop_SnatchedSkin_cy_Meta","120241490584890559","PAUSED",1673368,278797,5358],
+["main","259_serum_tr_larlarlee","120233288536990559","ACTIVE",1316344,78835,4691],
+["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_pharmacy","120245553596360559","ACTIVE",1098765,74170,2332],
+["main","2603_Product_spa_TW_260316_PAAT_TsengChungwei_Meta","120241191004880559","ACTIVE",1009573,71222,2200],
+["main","2512_cgm_tr_officially.val","120238700090740559","ACTIVE",971427,62661,4542],
+["main","260528_Meta_pic_0528_spa_buy2get1_CleanBOGO","120245630627510559","ACTIVE",947610,84130,2594],
+["main","260504_Meta_story_AMZ_retargeting_mothersday3","120243846710340559","PAUSED",933109,88554,2192],
+["main","260522_Meta_pic_0521_CCC_Prescriptions_review_Tri-Luma","120245273809200559","ACTIVE",919028,56150,2835],
+["main","260423_Meta_reedit_TW_0423_KR_CNchange_ccc_eye (2)","120245553596360559","ACTIVE",842541,44269,1929],
+["main","2603_Product_ccc_0320_AMZ_secret midface_Meta","120241417955560559","PAUSED",836935,41854,1413],
+["main","2602_spa_Product_0220_SINGLE_SilkPep_GrabTheGlow_v1_Meta","120240429832530559","ACTIVE",793654,37631,1539],
+["main","260504_Meta_story_AMZ_retargeting_mothersday22","120243846710340559","PAUSED",663507,67567,1790],
+["main","260529_Meta_pic_0529_spa_buy2get_1_Chipotle","120245719400960559","ACTIVE",647378,48820,2119],
+["main","260520_Meta_pic_0520_EGF_review_skinbooster","120244814108500559","ACTIVE",639601,35360,2843],
+["main","260422_Meta_reedit_TW_0422_KR_CNchange_spa_ba1","120243073903220559","PAUSED",592283,47845,1593],
+["main","260418_Meta_Collab_spa_Affiliate_allure_fashion","120244123107460559","PAUSED",563897,32656,4895],
+["bella","260421_Meta_spa_ttshopvideo_7623402569481719070","120246295720450528","ACTIVE",890684,64015,5391],
+["bella","260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_withoutBA","120248436940940528","PAUSED",292490,23443,1257],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen3","120246585000380528","PAUSED",163676,10775,1027],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_AsianMale","120248436940940528","ACTIVE",144214,12688,701],
+["bella","260421_Meta_spa_ttshopvideo_7628758960274689310","120246295720450528","PAUSED",141939,12390,1475],
+["bella","260423_Single_Meta_spa_7622759295045750047","120246585000380528","PAUSED",140533,10686,1067],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen4","120246585000380528","PAUSED",125955,8021,709],
+["bella","260529_Video_AITools_ccc_US_0529_ccc_Dark_patches_elbows","120248436940940528","ACTIVE",89248,6689,636],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen2","120246585000380528","PAUSED",87690,5487,472],
+["bella","260507_Video_AITools_spa_US_0507_ai_costco_v2","120247443261800528","PAUSED",75847,5971,470],
+["bella","260515_AIVidoe_AITools_EGFAmp_US_0514_EGFamp_USEN_POV_14DayNeck","120248156020600528","PAUSED",59031,4793,425],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteMale","120248436940940528","PAUSED",58495,5220,241],
+["bella","260424_Single_Meta_spa_spanish_7600243420115897630","120246534641960528","PAUSED",58098,7385,1061],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_WhiteMale","120248436940940528","PAUSED",51502,5591,274],
+["bella","260515_AIVidoe_AITools_ccc_US_0512_SBE_CapCrm_USEN_HowTo_DermNoBurn","120248436940940528","PAUSED",48794,3959,362],
+["bella","260507_Video_AITools_spa_US_0507_ai_costco_v1","120247443261800528","PAUSED",38556,3477,228],
+["bella","260602_Video_AITools_EGFAmp_US_0601_EGFamp_Iamaraisin","120248156020600528","ACTIVE",34308,2247,129],
+["bella","260602_Video_AITools_serum_US_0601_serum_Iamaraisin","120249717215300528","ACTIVE",29881,2316,155],
+["bella","260428_Single_Meta_spa_tiktok_AIVideo_kitchen","120246585000380528","PAUSED",27812,1642,155],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_LatinoMale","120248436940940528","PAUSED",22288,2018,146],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackMale","120248436940940528","PAUSED",18900,1720,68],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_BlackFemale","120248436940940528","PAUSED",10519,835,45],
+["bella","260525_Image_AITools_ccc_US_0523_ccc_LaserNoRetinal_Female","120248436940940528","PAUSED",8694,741,27],
+["bella","260527_Image_AITools_ccc_US_0527_ccc_LaserNoRetinal_WhiteFemale","120248436940940528","PAUSED",4635,507,24],
+["bella","260507_Video_AITools_spa_US_0507_ai_meditherapy_model_changed","120247443261800528","PAUSED",816,77,4],
+["bella","260529_Video_AITools_ccc_US_0529_ccc_unevenskinton_leg_BA","120248436940940528","ACTIVE",628,52,3]];
+
+const BLUE = '#378ADD', PINK = '#D4537E', GREEN = '#1D9E75', GRAY = '#B4B2A9';
+const won = v => '₩' + Math.round(v).toLocaleString('ko-KR');
+const fmtShort = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v;
+let from = '2026-05-05', to = '2026-06-03';
+let accFilter = 'all', statusFilter = 'ALL';
+let charts = {};
+
+function rows(arr) { return arr.filter(r => r[0] >= from && r[0] <= to); }
+function sum(arr, i) { return arr.reduce((a, r) => a + r[i], 0); }
+// 시트 날짜 d ≈ Meta 날짜 d+1 → Meta 윈도우 [from,to]에 대응하는 시트 윈도우는 하루 앞당김
+function shiftDate(d, n) { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0,10); }
+function amzRows() { const f = shiftDate(from, -1), t = shiftDate(to, -1); return AMZ.filter(r => r[0] >= f && r[0] <= t); }
+function amzVals(r) {
+  if (accFilter === 'main') return { sale: r[3], cost: r[4] };
+  if (accFilter === 'bella') return { sale: r[5], cost: r[6] };
+  return { sale: r[1], cost: r[2] };
+}
+
+function renderKpis() {
+  const m = rows(MAIN), b = rows(BELLA);
+  const use = accFilter === 'main' ? [m] : accFilter === 'bella' ? [b] : [m, b];
+  const spend = use.reduce((a, x) => a + sum(x, 1), 0);
+  const imp = use.reduce((a, x) => a + sum(x, 2), 0);
+  const clk = use.reduce((a, x) => a + sum(x, 3), 0);
+  const pur = use.reduce((a, x) => a + sum(x, 4), 0);
+  const az = amzRows().map(amzVals);
+  const azSale = az.reduce((a, x) => a + x.sale, 0);
+  const azCost = az.reduce((a, x) => a + x.cost, 0);
+  const azRoas = azCost ? azSale / azCost * 100 : 0;
+  const k = [
+    ['Total Spend (Meta)', won(spend), ''],
+    ['Link Clicks', clk.toLocaleString(), 'impressions ' + imp.toLocaleString()],
+    ['Avg CTR (link)', imp ? (clk/imp*100).toFixed(2)+'%' : '—', 'link clicks / impressions'],
+    ['Avg CPC (link)', clk ? won(spend/clk) : '—', 'spend / link clicks'],
+    ['Amazon Sales', won(azSale), '제품분석 시트 기준', 'amz'],
+    ['Amazon ROAS', azRoas.toFixed(2)+'%', '매출 ÷ 광고비 (시트)', 'amz'],
+    ['Meta Purchases', pur + '건', 'pixel omni_purchase'],
+    ['일평균 Amazon 매출', az.length ? won(azSale/az.length) : '—', az.length + '일 기준', 'amz']
+  ];
+  document.getElementById('kpis').innerHTML = k.map(x =>
+    '<div class="kpi' + (x[3] ? ' ' + x[3] : '') + '"><p class="l">'+x[0]+'</p><p class="v">'+x[1]+'</p>'+(x[2]?'<p class="s">'+x[2]+'</p>':'')+'</div>').join('');
+
+  const alerts = [];
+  if (azRoas && azRoas < 100) alerts.push('선택 기간 Amazon ROAS ' + azRoas.toFixed(2) + '% < 100% (손실 구간)');
+  const lastAz = az[az.length - 1];
+  if (lastAz && lastAz.cost > 0 && lastAz.sale / lastAz.cost < 1) alerts.push('마지막 기록일 ROAS ' + (lastAz.sale/lastAz.cost*100).toFixed(2) + '%');
+  const el = document.getElementById('alerts');
+  if (alerts.length) { el.style.display = 'block'; el.textContent = '🔔 ' + alerts.join(' · '); }
+  else el.style.display = 'none';
+}
+
+function mkChart(id, cfg) { if (charts[id]) charts[id].destroy(); charts[id] = new Chart(document.getElementById(id), cfg); }
+function opts(cb) {
+  return { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 11 } } } },
+    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+      y: { grid: { color: 'rgba(0,0,0,.06)' }, ticks: { callback: cb, font: { size: 10 } } } } };
+}
+
+function renderCharts() {
+  const m = rows(MAIN), b = rows(BELLA);
+  const labels = m.map(r => r[0].slice(5).replace('-', '/'));
+  const showM = accFilter !== 'bella', showB = accFilter !== 'main';
+
+  const az = amzRows();
+  const azLabels = az.map(r => r[0].slice(5).replace('-', '/'));
+  const azV = az.map(amzVals);
+  mkChart('cAmz', { type: 'bar', data: { labels: azLabels, datasets: [
+    { label: 'Amazon Sales', data: azV.map(x => x.sale), backgroundColor: GREEN },
+    { label: 'Meta Spend', data: azV.map(x => x.cost), backgroundColor: GRAY }
+  ]}, options: opts(fmtShort) });
+  mkChart('cRoas', { type: 'line', data: { labels: azLabels, datasets: [
+    { label: 'ROAS %', data: azV.map(x => x.cost ? +(x.sale/x.cost*100).toFixed(2) : 0),
+      borderColor: GREEN, backgroundColor: GREEN, pointRadius: 3, tension: .3, fill: false },
+    { label: '손익분기 100%', data: azV.map(() => 100), borderColor: '#E24B4A',
+      borderDash: [4,4], pointRadius: 0, fill: false }
+  ]}, options: opts(v => v + '%') });
+
+  const ds = [];
+  if (showM) ds.push({ label: 'Main 4233', data: m.map(r => r[1]), backgroundColor: BLUE, stack: 's' });
+  if (showB) ds.push({ label: 'Bella 7831', data: b.map(r => r[1]), backgroundColor: PINK, stack: 's' });
+  mkChart('cSpend', { type: 'bar', data: { labels, datasets: ds }, options: opts(fmtShort) });
+
+  const line = (data, color, dash) => ({ label: dash ? 'Bella 7831' : 'Main 4233', data, borderColor: color,
+    backgroundColor: color, borderDash: dash ? [6,4] : [], pointRadius: 2, tension: .3, fill: false });
+  const ctrDs = [], cpcDs = [];
+  if (showM) { ctrDs.push(line(m.map(r => r[2] ? +(r[3]/r[2]*100).toFixed(2) : 0), BLUE, false));
+    cpcDs.push(line(m.map(r => r[3] ? Math.round(r[1]/r[3]) : 0), BLUE, false)); }
+  if (showB) { ctrDs.push(line(b.map(r => r[2] ? +(r[3]/r[2]*100).toFixed(2) : 0), PINK, true));
+    cpcDs.push(line(b.map(r => r[3] ? Math.round(r[1]/r[3]) : 0), PINK, true)); }
+  mkChart('cCtr', { type: 'line', data: { labels, datasets: ctrDs }, options: opts(v => v + '%') });
+  mkChart('cCpc', { type: 'line', data: { labels, datasets: cpcDs }, options: opts(v => '₩' + v) });
+}
+
+function roasCell(sale, cost) {
+  if (!cost) return '<td>—</td>';
+  const r = sale / cost * 100;
+  return '<td class="' + (r >= 100 ? 'roas-pos' : 'roas-neg') + '">' + r.toFixed(2) + '%</td>';
+}
+function renderDaily() {
+  const az = amzRows().slice().reverse();
+  document.getElementById('dayCount').textContent = '(' + az.length + '일)';
+  document.querySelector('#dailyTable tbody').innerHTML = az.map(r =>
+    '<tr><td>' + r[0] + '</td>' +
+    '<td>' + r[1].toLocaleString() + '</td>' +
+    '<td>' + r[2].toLocaleString() + '</td>' +
+    roasCell(r[1], r[2]) +
+    '<td>' + r[3].toLocaleString() + '</td>' + roasCell(r[3], r[4]) +
+    '<td>' + r[5].toLocaleString() + '</td>' + roasCell(r[5], r[6]) + '</tr>').join('');
+}
+
+let sortKey = 'spend', sortDir = -1;
+function renderTable() {
+  const list = CAMP
+    .filter(c => accFilter === 'all' || c[0] === accFilter)
+    .filter(c => statusFilter === 'ALL' || c[2] === statusFilter)
+    .map(c => ({ acc: c[0], name: c[1], status: c[2], objective: c[3], spend: c[4], imp: c[5], clicks: c[6],
+      ctr: c[5] ? c[6]/c[5]*100 : 0, cpc: c[6] ? c[4]/c[6] : 0 }))
+    .sort((a, b) => (a[sortKey] < b[sortKey] ? 1 : -1) * sortDir * -1);
+  document.getElementById('campCount').textContent = '(' + list.length + ')';
+  document.querySelector('#campTable tbody').innerHTML = list.map(c =>
+    '<tr><td>' + c.name + '</td>' +
+    '<td><span class="tag ' + c.acc + '">' + (c.acc === 'main' ? 'Main' : 'Bella') + '</span></td>' +
+    '<td><span class="tag ' + c.status + '">' + c.status + '</span></td>' +
+    '<td>' + (c.objective === 'OUTCOME_SALES' ? '판매' : '트래픽') + '</td>' +
+    '<td>' + Math.round(c.spend).toLocaleString() + '</td>' +
+    '<td>' + c.clicks.toLocaleString() + '</td>' +
+    '<td>' + c.ctr.toFixed(2) + '</td>' +
+    '<td>' + Math.round(c.cpc).toLocaleString() + '</td></tr>').join('');
+}
+
+let adStatusFilter = 'ALL', adSortKey = 'spend', adSortDir = -1;
+function renderAdsTable() {
+  const list = ADS
+    .filter(a => accFilter === 'all' || a[0] === accFilter)
+    .filter(a => adStatusFilter === 'ALL' || a[3] === adStatusFilter)
+    .map(a => ({ acc: a[0], name: a[1], camp: CNAME[a[2]] || a[2], status: a[3], spend: a[4], imp: a[5], clicks: a[6],
+      ctr: a[5] ? a[6]/a[5]*100 : 0, cpc: a[6] ? a[4]/a[6] : 0 }))
+    .sort((x, y) => (x[adSortKey] < y[adSortKey] ? 1 : -1) * adSortDir * -1);
+  document.getElementById('adCount').textContent = '(' + list.length + ')';
+  document.querySelector('#adsTable tbody').innerHTML = list.map(a =>
+    '<tr><td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;" title="' + a.name + '">' + a.name + '</td>' +
+    '<td>' + a.camp + '</td>' +
+    '<td><span class="tag ' + a.acc + '">' + (a.acc === 'main' ? 'Main' : 'Bella') + '</span></td>' +
+    '<td><span class="tag ' + a.status + '">' + a.status + '</span></td>' +
+    '<td>' + Math.round(a.spend).toLocaleString() + '</td>' +
+    '<td>' + a.clicks.toLocaleString() + '</td>' +
+    '<td>' + a.ctr.toFixed(2) + '</td>' +
+    '<td>' + Math.round(a.cpc).toLocaleString() + '</td></tr>').join('');
+}
+
+function renderAll() { renderKpis(); renderCharts(); renderDaily(); renderTable(); renderAdsTable(); }
+
+document.querySelectorAll('[data-r]').forEach(btn => btn.onclick = () => {
+  document.querySelectorAll('[data-r]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  const days = +btn.dataset.r;
+  const end = new Date('2026-06-03');
+  const start = new Date(end); start.setDate(end.getDate() - days + 1);
+  from = start.toISOString().slice(0,10); if (from < '2026-05-05') from = '2026-05-05';
+  to = '2026-06-03';
+  document.getElementById('from').value = from; document.getElementById('to').value = to;
+  renderAll();
+});
+document.getElementById('from').onchange = e => { if (e.target.value) { from = e.target.value; renderAll(); } };
+document.getElementById('to').onchange = e => { if (e.target.value) { to = e.target.value; renderAll(); } };
+[['accAll','all'],['accMain','main'],['accBella','bella']].forEach(([id, v]) => {
+  document.getElementById(id).onclick = () => {
+    ['accAll','accMain','accBella'].forEach(i => document.getElementById(i).classList.remove('on'));
+    document.getElementById(id).classList.add('on');
+    accFilter = v; renderAll();
+  };
+});
+document.querySelectorAll('.st').forEach(btn => btn.onclick = () => {
+  document.querySelectorAll('.st').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); statusFilter = btn.dataset.s; renderTable();
+});
+document.querySelectorAll('#campTable th').forEach(th => th.onclick = () => {
+  const k = th.dataset.k; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = -1; }
+  renderTable();
+});
+document.querySelectorAll('.ast').forEach(btn => btn.onclick = () => {
+  document.querySelectorAll('.ast').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on'); adStatusFilter = btn.dataset.s; renderAdsTable();
+});
+document.querySelectorAll('#adsTable th').forEach(th => th.onclick = () => {
+  const k = th.dataset.k; if (adSortKey === k) adSortDir *= -1; else { adSortKey = k; adSortDir = -1; }
+  renderAdsTable();
+});
+document.getElementById('from').value = from;
+document.getElementById('to').value = to;
+renderAll();
+</script>
+</body>
+</html>
