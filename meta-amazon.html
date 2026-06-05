@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meta × Amazon — Combined Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .kpi-trend-up { color: #10b981; }
+    .kpi-trend-down { color: #ef4444; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="min-h-screen">
+    <header class="bg-white border-b border-slate-200">
+      <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-orange-500 flex items-center justify-center text-white font-bold">M×</div>
+          <div>
+            <h1 class="text-lg font-semibold" id="page-title">Meta × Amazon Combined</h1>
+            <p class="text-xs text-slate-500" id="page-subtitle">Loading…</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <a href="./" class="text-slate-500 hover:text-slate-900">Ads view</a>
+          <span class="text-slate-300">·</span>
+          <a href="./campaigns.html" class="text-slate-500 hover:text-slate-900">Campaign view</a>
+          <span class="text-slate-300">·</span>
+          <span class="font-medium text-slate-900">Meta × Amazon</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+
+      <!-- Data-freshness notice -->
+      <div id="freshness-banner" class="hidden border border-amber-200 bg-amber-50 text-amber-900 rounded-xl px-5 py-3 text-sm"></div>
+
+      <!-- Section 1 — KPI grid -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Overlap window — Meta spend × Amazon sales</h2>
+        <div id="kpi-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+      </section>
+
+      <!-- Section 2 — Combined time-series -->
+      <section class="bg-white border border-slate-200 rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-900">Daily — Meta spend vs Amazon sales</h2>
+            <p class="text-xs text-slate-500">Both axes shown; Meta in KRW, Amazon in USD</p>
+          </div>
+          <div class="flex gap-3 text-xs">
+            <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span>Meta spend (KRW)</span>
+            <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-500"></span>Amazon sales (USD)</span>
+          </div>
+        </div>
+        <canvas id="combined-chart" height="110"></canvas>
+      </section>
+
+      <!-- Section 3 — Side by side panel summary -->
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white border border-slate-200 rounded-xl p-6">
+          <h3 class="text-sm font-semibold text-slate-900 mb-1">Meta — campaign performance</h3>
+          <p class="text-xs text-slate-500 mb-4" id="meta-period">…</p>
+          <div id="meta-summary" class="space-y-2 text-sm"></div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-6">
+          <h3 class="text-sm font-semibold text-slate-900 mb-1" id="amazon-marketplace-title">Amazon — sales performance</h3>
+          <p class="text-xs text-slate-500 mb-4" id="amazon-period">…</p>
+          <div id="amazon-summary" class="space-y-2 text-sm"></div>
+        </div>
+      </section>
+
+      <!-- Section 4 — Joint daily table -->
+      <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200">
+          <h2 class="text-sm font-semibold text-slate-900">Joint daily breakdown</h2>
+          <p class="text-xs text-slate-500">Only days with Amazon data shown. Joint ROAS = Amazon sales ÷ Meta spend (both KRW).</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="text-left px-6 py-3">Date</th>
+                <th class="text-right px-4 py-3">Meta spend (KRW)</th>
+                <th class="text-right px-4 py-3">Amazon sales (USD)</th>
+                <th class="text-right px-4 py-3">Amazon orders</th>
+                <th class="text-right px-4 py-3">Amazon units</th>
+                <th class="text-right px-6 py-3">Joint ROAS</th>
+              </tr>
+            </thead>
+            <tbody id="joint-tbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./data.js"></script>
+  <script src="./amazon-data.js"></script>
+  <script src="./meta-amazon.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "marketplace": "Amazon.com",
+  "marketplaceId": "ATVPDKIKX0DER",
+  "accountId": "A1V98HN5XB6XF_ATVPDKIKX0DER",
+  "currency": "USD",
+  "source": "Porter Metrics (porter-reporting.query_data)",
+  "dataAvailableThrough": "2026-05-19",
+  "fetchedAt": "2026-06-04",
+  "rows": [
+    {"date": "2026-05-06", "sales": 102088.27, "orders": 3552, "units": 5609},
+    {"date": "2026-05-07", "sales": 96851.77,  "orders": 3334, "units": 5168},
+    {"date": "2026-05-08", "sales": 134094.94, "orders": 4728, "units": 7460},
+    {"date": "2026-05-09", "sales": 127634.66, "orders": 4543, "units": 7017},
+    {"date": "2026-05-10", "sales": 78942.65,  "orders": 2913, "units": 4022},
+    {"date": "2026-05-11", "sales": 62806.06,  "orders": 2130, "units": 2872},
+    {"date": "2026-05-12", "sales": 44875.93,  "orders": 1446, "units": 1803},
+    {"date": "2026-05-13", "sales": 38414.16,  "orders": 1246, "units": 1554},
+    {"date": "2026-05-14", "sales": 76685.68,  "orders": 2499, "units": 3997},
+    {"date": "2026-05-15", "sales": 68972.46,  "orders": 2292, "units": 3504},
+    {"date": "2026-05-16", "sales": 53143.76,  "orders": 1733, "units": 2411},
+    {"date": "2026-05-17", "sales": 57429.47,  "orders": 1968, "units": 2611},
+    {"date": "2026-05-18", "sales": 50750.40,  "orders": 1667, "units": 2362},
+    {"date": "2026-05-19", "sales": 63471.78,  "orders": 2106, "units": 2875}
+  ]
+}

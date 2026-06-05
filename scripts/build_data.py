@@ -9,12 +9,16 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 RAW = HERE / "raw"
 OUT = HERE.parent / "data.js"
+AMAZON_OUT = HERE.parent / "amazon-data.js"
 
 ACCOUNT_NAME = "[북미]성분에디터_아마존"
 ACCOUNT_ID = "act_1354817955224233"
 CURRENCY = "KRW"
 GENERATED_AT = "2026-06-04"
 DATE_RANGE_LABEL = "May 5 – June 3, 2026 (top 50 by spend)"
+
+# USD→KRW for joint Meta×Amazon ROAS. Update when refreshing data.
+USD_KRW = 1380
 
 PLACEMENT_LABEL = {
     "facebook": "Facebook",
@@ -110,6 +114,52 @@ def main() -> None:
     OUT.write_text(body, encoding="utf-8")
     print(f"Wrote {OUT}: {len(campaigns)} campaigns, {len(timeseries)} daily rows, "
           f"{len(placements)} placements.")
+
+    build_amazon(timeseries)
+
+
+def build_amazon(meta_timeseries: list[dict]) -> None:
+    raw = json.loads((RAW / "amazon_sales.json").read_text())
+    amazon_rows = sorted(raw["rows"], key=lambda r: r["date"])
+
+    meta_by_date = {r["date"]: r["spend"] for r in meta_timeseries}
+    joint = []
+    for row in amazon_rows:
+        meta_spend_krw = meta_by_date.get(row["date"], 0)
+        sales_krw = row["sales"] * USD_KRW
+        roas = (sales_krw / meta_spend_krw) if meta_spend_krw else None
+        joint.append(
+            {
+                "date": row["date"],
+                "amazonSales": row["sales"],
+                "amazonOrders": row["orders"],
+                "amazonUnits": row["units"],
+                "metaSpendKrw": meta_spend_krw,
+                "amazonSalesKrw": round(sales_krw),
+                "roasKrw": round(roas, 2) if roas else None,
+            }
+        )
+
+    amazon_meta = {
+        "marketplace": raw["marketplace"],
+        "marketplaceId": raw["marketplaceId"],
+        "currency": raw["currency"],
+        "source": raw["source"],
+        "dataAvailableThrough": raw["dataAvailableThrough"],
+        "fetchedAt": raw["fetchedAt"],
+        "usdKrw": USD_KRW,
+        "rangeStart": joint[0]["date"] if joint else None,
+        "rangeEnd": joint[-1]["date"] if joint else None,
+    }
+
+    body = (
+        "// Auto-generated. Amazon Seller data via Porter Metrics.\n"
+        "// USD→KRW rate is hardcoded in scripts/build_data.py — refresh on rebuild.\n\n"
+        f"const amazonMeta = {js(amazon_meta)};\n\n"
+        f"const amazonDaily = {js(joint)};\n"
+    )
+    AMAZON_OUT.write_text(body, encoding="utf-8")
+    print(f"Wrote {AMAZON_OUT}: {len(joint)} Amazon daily rows ({amazon_meta['rangeStart']} → {amazon_meta['rangeEnd']}).")
 
 
 if __name__ == "__main__":
