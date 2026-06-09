@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMZ Bridge Pages — Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0a0a0c;
+  --bg-card:#15151a;
+  --bg-card-2:#1c1c23;
+  --border:#26262e;
+  --text:#fafafa;
+  --text-sub:#8a8a92;
+  --text-dim:#5a5a64;
+  --gold:#ffc52b;
+  --gold-dim:#a87800;
+  --green:#4ade80;
+  --red:#f87171;
+  --blue:#60a5fa;
+  --purple:#c084fc;
+  --r:14px;
+  --font:'Inter',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  line-height:1.4;
+  padding:24px;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+@media(min-width:1200px){body{padding:32px 40px}}
+
+/* Top bar */
+.top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:28px;flex-wrap:wrap;gap:16px;
+}
+.brand{
+  display:flex;align-items:center;gap:12px;
+}
+.brand-mark{
+  width:38px;height:38px;
+  background:linear-gradient(135deg,#ffc52b,#a87800);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;color:#000;font-size:18px;
+}
+.brand-name{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.brand-name span{color:var(--gold);font-weight:600}
+.brand-sub{font-size:11px;color:var(--text-sub);margin-top:1px}
+
+.top-actions{display:flex;gap:10px;align-items:center}
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:999px;
+  background:var(--bg-card);border:1px solid var(--border);
+  font-size:12px;color:var(--text-sub);
+}
+.pill .dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);
+  animation:pulse 2s ease-in-out infinite;
+}
+.pill.live .dot{background:#22c55e}
+@keyframes pulse{
+  0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,.6)}
+  50%{opacity:.6;box-shadow:0 0 0 6px rgba(34,197,94,0)}
+}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--gold);color:#000;font-weight:600;font-size:12px;
+  padding:7px 14px;border-radius:8px;border:none;cursor:pointer;
+}
+.btn:hover{opacity:.9}
+
+/* Section heading */
+.sect-head{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin:32px 0 14px;flex-wrap:wrap;gap:8px;
+}
+.sect-head h2{
+  font-size:13px;font-weight:700;letter-spacing:.16em;
+  color:var(--text-sub);text-transform:uppercase;
+}
+.sect-head .meta{font-size:11px;color:var(--text-dim)}
+
+/* Grid */
+.row{display:grid;gap:14px;margin-bottom:14px}
+.row.k4{grid-template-columns:repeat(2,1fr)}
+.row.k3{grid-template-columns:1fr}
+.row.k2{grid-template-columns:1fr}
+@media(min-width:760px){
+  .row.k4{grid-template-columns:repeat(4,1fr)}
+  .row.k3{grid-template-columns:repeat(3,1fr)}
+  .row.k2{grid-template-columns:1fr 1fr}
+}
+
+/* KPI card */
+.kpi{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:18px 18px 16px;
+  position:relative;overflow:hidden;
+}
+.kpi-label{
+  font-size:11px;font-weight:600;color:var(--text-sub);
+  letter-spacing:.12em;text-transform:uppercase;
+  display:flex;align-items:center;gap:6px;
+}
+.kpi-value{
+  font-size:34px;font-weight:700;letter-spacing:-.03em;
+  line-height:1.05;margin:8px 0 4px;
+}
+.kpi-value .unit{font-size:.5em;font-weight:500;color:var(--text-sub);margin-left:3px}
+.kpi-delta{
+  font-size:11px;font-weight:600;display:inline-flex;gap:3px;
+}
+.kpi-delta.up{color:var(--green)}
+.kpi-delta.down{color:var(--red)}
+.kpi-delta.flat{color:var(--text-sub)}
+.kpi.gold{background:linear-gradient(135deg,#1f1810,#15151a);border-color:#3a2d10}
+.kpi.gold .kpi-value{color:var(--gold)}
+.kpi-spark{
+  position:absolute;bottom:0;left:0;right:0;height:38px;
+  opacity:.4;pointer-events:none;
+}
+
+/* Card */
+.card{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:22px;
+}
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.card-title{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.card-sub{font-size:11px;color:var(--text-sub);margin-top:2px}
+.card-tag{
+  font-size:10px;font-weight:700;letter-spacing:.1em;
+  background:rgba(255,197,43,.1);color:var(--gold);
+  padding:4px 9px;border-radius:6px;text-transform:uppercase;
+}
+.card-tag.alert{background:rgba(248,113,113,.1);color:var(--red)}
+.card-tag.good{background:rgba(74,222,128,.1);color:var(--green)}
+
+/* Bar list */
+.barlist{display:flex;flex-direction:column;gap:8px}
+.barlist-item{position:relative}
+.barlist-row{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;margin-bottom:4px;position:relative;z-index:2;
+  padding:4px 10px;
+}
+.barlist-name{color:var(--text);font-weight:500;max-width:75%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barlist-name.highlight{color:var(--gold);font-weight:700}
+.barlist-val{font-family:var(--mono);font-weight:600;font-size:12px;color:var(--text-sub)}
+.barlist-bar{
+  position:absolute;left:0;top:0;bottom:0;
+  background:linear-gradient(90deg,rgba(255,197,43,.15),rgba(255,197,43,.05));
+  border-radius:6px;z-index:1;
+}
+.barlist-bar.highlight{background:linear-gradient(90deg,rgba(255,197,43,.4),rgba(255,197,43,.1))}
+
+/* CTA breakdown */
+.cta-grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:600px){.cta-grid{grid-template-columns:repeat(2,1fr)}}
+.cta-card{
+  background:var(--bg-card-2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:16px;position:relative;
+}
+.cta-pos{
+  font-size:10px;font-weight:700;letter-spacing:.14em;
+  color:var(--gold-dim);text-transform:uppercase;margin-bottom:6px;
+}
+.cta-pos.hero{color:#facc15}
+.cta-pos.sticky{color:#60a5fa}
+.cta-pos.final{color:#4ade80}
+.cta-pos.header{color:#c084fc}
+.cta-name{font-size:13px;font-weight:600;margin-bottom:10px;line-height:1.3}
+.cta-stats{display:flex;justify-content:space-between;align-items:flex-end;gap:14px}
+.cta-stat-n{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--gold);line-height:1}
+.cta-stat-l{font-size:10px;color:var(--text-sub);text-transform:uppercase;letter-spacing:.08em}
+.cta-pct{font-size:11px;color:var(--text-sub)}
+.cta-pct b{color:#fff}
+
+/* Funnel */
+.funnel{display:flex;flex-direction:column;gap:6px}
+.funnel-step{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-radius:8px;
+  background:var(--bg-card-2);border:1px solid var(--border);
+  position:relative;
+}
+.funnel-step .num{
+  font-family:var(--mono);font-weight:700;font-size:11px;color:var(--gold);
+  width:20px;text-align:center;
+}
+.funnel-step .label{flex:1;font-size:13px;font-weight:500}
+.funnel-step .val{font-family:var(--mono);font-weight:600;font-size:13px;color:var(--text-sub)}
+.funnel-arrow{
+  text-align:center;color:var(--text-dim);font-size:10px;line-height:1;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.funnel-drop{color:var(--red);font-family:var(--mono);font-weight:600}
+
+/* Donut for device */
+.donut-wrap{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.donut-canvas{position:relative;width:140px;height:140px;flex-shrink:0}
+.donut-canvas-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.donut-canvas-center .n{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.donut-canvas-center .l{font-size:9px;color:var(--text-sub);letter-spacing:.12em;text-transform:uppercase}
+.donut-legend{flex:1;min-width:160px;display:flex;flex-direction:column;gap:8px}
+.legend-row{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;
+}
+.legend-row .l{display:flex;align-items:center;gap:8px}
+.legend-row .dot{width:8px;height:8px;border-radius:2px}
+.legend-row .v{font-family:var(--mono);font-weight:600;font-size:12px;color:var(--text-sub)}
+
+/* Age table */
+.age-table{display:flex;flex-direction:column;gap:6px}
+.age-row{
+  display:grid;grid-template-columns:80px 1fr 50px;align-items:center;gap:10px;
+  font-size:12px;
+}
+.age-bar-wrap{
+  background:rgba(255,255,255,.03);
+  border-radius:4px;height:8px;overflow:hidden;position:relative;
+}
+.age-bar{
+  height:100%;background:linear-gradient(90deg,var(--gold),#a87800);
+  border-radius:4px;
+}
+.age-row.target .age-bar{background:linear-gradient(90deg,#ffc52b,#fff4c2)}
+.age-row.target .age-label{color:var(--gold);font-weight:700}
+.age-pct{font-family:var(--mono);font-weight:600;color:var(--text-sub);font-size:11px;text-align:right}
+
+/* Alert banner */
+.alert{
+  background:linear-gradient(135deg,rgba(248,113,113,.08),rgba(248,113,113,.02));
+  border:1px solid rgba(248,113,113,.3);
+  border-radius:var(--r);
+  padding:18px 22px;display:flex;align-items:flex-start;gap:14px;
+  margin-bottom:14px;
+}
+.alert-icon{
+  width:34px;height:34px;flex-shrink:0;border-radius:8px;
+  background:rgba(248,113,113,.15);color:var(--red);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+}
+.alert-body h4{font-size:14px;font-weight:700;margin-bottom:4px}
+.alert-body p{font-size:12px;color:var(--text-sub);line-height:1.5;max-width:80ch}
+.alert-body b{color:#fff}
+
+/* Footer */
+.footer{
+  margin-top:36px;padding-top:22px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;color:var(--text-dim);flex-wrap:wrap;gap:10px;
+}
+.footer code{
+  font-family:var(--mono);background:var(--bg-card);
+  padding:2px 8px;border-radius:4px;color:var(--text-sub);
+}
+
+/* Chart container */
+.chart-box{position:relative;height:220px}
+
+/* Country list */
+.country-list{flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px}
+.country-row{
+  display:grid;grid-template-columns:24px 1fr 50px;gap:10px;align-items:center;
+  padding:6px 10px;background:var(--bg-card-2);border-radius:6px;
+  font-size:12px;
+}
+.country-row .flag{font-size:16px;text-align:center}
+.country-row .name{color:var(--text)}
+.country-row .v{font-family:var(--mono);font-weight:600;color:var(--gold);text-align:right;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div>
+      <div class="brand-name">AMZ Bridge Pages <span>Performance</span></div>
+      <div class="brand-sub">SUNGBOON EDITOR · GTM-59S3JWFN · GA4 G-F1NFDHM71S</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="pill live"><span class="dot"></span> Live Tracking</div>
+    <div class="pill"><span>📅</span> Last 30 days</div>
+    <button class="btn">⤓ Export</button>
+  </div>
+</div>
+
+<!-- Alert: GTM now published (Version 3) — awaiting data -->
+<div class="alert">
+  <div class="alert-icon">⚠</div>
+  <div class="alert-body">
+    <h4>GTM Version 3 published — prpage_amazon_btn_click now active</h4>
+    <p>GTM container <code style="background:rgba(255,255,255,.08);padding:1px 6px;border-radius:3px;font-family:var(--mono);color:#ffc52b">GTM-59S3JWFN</code> Version 3 was published on <b>Jun 9, 2026</b>. Amazon CTA click tracking is now live on <b>sungbooneditor.com/products/silk-peptide-egf-intensive-ampoule-amazon-1</b>. Data will begin populating within 24–48 hours.</p>
+  </div>
+</div>
+
+<!-- ============= Section 1: Realtime KPIs ============= -->
+<div class="sect-head">
+  <div>
+    <h2>Realtime · Last 30 min</h2>
+    <div class="meta" style="font-size:11px;color:var(--text-dim);margin-top:4px">Live data from GA4 G-F1NFDHM71S</div>
+  </div>
+  <div class="meta">Updated 0s ago</div>
+</div>
+
+<div class="row k4">
+  <div class="kpi gold">
+    <div class="kpi-label">★ Active Users · Live</div>
+    <div class="kpi-value">34</div>
+    <div class="kpi-delta up">▲ Real-time</div>
+    <canvas class="kpi-spark" id="spark1"></canvas>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Bridge Page Views (30m)</div>
+    <div class="kpi-value">5</div>
+    <div class="kpi-delta up">▲ +25% vs prev 30m</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Sessions Started</div>
+    <div class="kpi-value">37</div>
+    <div class="kpi-delta up">▲ +12%</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Amazon CTA Clicks</div>
+    <div class="kpi-value" style="color:var(--text-dim)">—</div>
+    <div class="kpi-delta flat">⏳ Data incoming (GTM live)</div>
+  </div>
+</div>
+
+<!-- ============= Section 2: Bridge Page Performance ============= -->
+<div class="sect-head">
+  <div>
+    <h2>Bridge Page · 30-Day Performance</h2>
+  </div>
+</div>
+
+<div class="row k4">
+  <div class="kpi">
+    <div class="kpi-label">Total Page Views</div>
+    <div class="kpi-value">8,510</div>
+    <div class="kpi-delta up">▲ +5.4% vs prev</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Avg. Time on Page</div>
+    <div class="kpi-value">1:47 <span class="unit">min</span></div>
+    <div class="kpi-delta up">▲ +12s</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Avg. Scroll Depth</div>
+    <div class="kpi-value">62 <span class="unit">%</span></div>
+    <div class="kpi-delta down">▼ −3%</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Bounce Rate</div>
+    <div class="kpi-value">48 <span class="unit">%</span></div>
+    <div class="kpi-delta up">▼ −5% (better)</div>
+  </div>
+</div>
+
+<!-- Time series + Top pages -->
+<div class="row k2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Page Views Trend</div>
+        <div class="card-sub">Bridge page · last 30 days · daily</div>
+      </div>
+      <span class="card-tag good">Growing</span>
+    </div>
+    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Top Pages — Last 30 min</div>
+        <div class="card-sub">23 unique pages tracked</div>
+      </div>
+      <span class="card-tag">Live</span>
+    </div>
+    <div class="barlist">
+      <div class="barlist-item">
+        <div class="barlist-bar" style="width:100%"></div>
+        <div class="barlist-row"><span class="barlist-name">Deep Collagen Silk Peptide…</span><span class="barlist-val">7</span></div>
+      </div>
+      <div class="barlist-item">
+        <div class="barlist-bar" style="width:71%"></div>
+        <div class="barlist-row"><span class="barlist-name">Kojic Acid Niacinamide Bright…</span><span class="barlist-val">5</span></div>
+      </div>
+      <div class="barlist-item">
+        <div class="barlist-bar highlight" style="width:71%"></div>
+        <div class="barlist-row"><span class="barlist-name highlight">★ Silk Peptide EGF Intensive Amp.</span><span class="barlist-val">5</span></div>
+      </div>
+      <div class="barlist-item">
+        <div class="barlist-bar" style="width:57%"></div>
+        <div class="barlist-row"><span class="barlist-name">Deep Collagen Cream In Serum</span><span class="barlist-val">4</span></div>
+      </div>
+      <div class="barlist-item">
+        <div class="barlist-bar" style="width:57%"></div>
+        <div class="barlist-row"><span class="barlist-name">Deep Collagen Retinol Spicule</span><span class="barlist-val">4</span></div>
+      </div>
+      <div class="barlist-item">
+        <div class="barlist-bar" style="width:57%"></div>
+        <div class="barlist-row"><span class="barlist-name">SUNGBOON EDITOR Official</span><span class="barlist-val">4</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= Section 3: CTA Performance by Position ============= -->
+<div class="sect-head">
+  <div>
+    <h2>Amazon CTA · Performance by Position</h2>
+    <div class="meta" style="margin-top:4px">prpage_amazon_btn_click · GTM-59S3JWFN</div>
+  </div>
+  <span class="card-tag" style="background:rgba(74,222,128,.1);color:var(--green)">GTM Live</span>
+</div>
+
+<div class="card">
+  <div class="cta-grid">
+    <div class="cta-card">
+      <div class="cta-pos hero">Hero CTA</div>
+      <div class="cta-name">Get Mine — Free Gift Included →</div>
+      <div class="cta-stats">
+        <div>
+          <div class="cta-stat-n">—</div>
+          <div class="cta-stat-l">Clicks</div>
+        </div>
+        <div class="cta-pct">CTR: <b>—</b></div>
+      </div>
+    </div>
+    <div class="cta-card">
+      <div class="cta-pos sticky">Sticky Mobile CTA</div>
+      <div class="cta-name">Shop Now →</div>
+      <div class="cta-stats">
+        <div>
+          <div class="cta-stat-n">—</div>
+          <div class="cta-stat-l">Clicks</div>
+        </div>
+        <div class="cta-pct">CTR: <b>—</b></div>
+      </div>
+    </div>
+    <div class="cta-card">
+      <div class="cta-pos final">Final CTA</div>
+      <div class="cta-name">Add to Cart — $29 (Save $16)</div>
+      <div class="cta-stats">
+        <div>
+          <div class="cta-stat-n">—</div>
+          <div class="cta-stat-l">Clicks</div>
+        </div>
+        <div class="cta-pct">CTR: <b>—</b></div>
+      </div>
+    </div>
+    <div class="cta-card">
+      <div class="cta-pos header">Header CTA</div>
+      <div class="cta-name">Shop Now — $29</div>
+      <div class="cta-stats">
+        <div>
+          <div class="cta-stat-n">—</div>
+          <div class="cta-stat-l">Clicks</div>
+        </div>
+        <div class="cta-pct">CTR: <b>—</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= Section 4: Conversion Funnel + Devices ============= -->
+<div class="sect-head">
+  <h2>Funnel · Page View → Amazon Click</h2>
+</div>
+
+<div class="row k2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Conversion Funnel</div>
+        <div class="card-sub">Bridge page session journey</div>
+      </div>
+      <span class="card-tag">Last 30 days</span>
+    </div>
+    <div class="funnel">
+      <div class="funnel-step"><span class="num">①</span><span class="label">Page View</span><span class="val">8,510</span></div>
+      <div class="funnel-arrow">↓ Drop <span class="funnel-drop">−38%</span></div>
+      <div class="funnel-step"><span class="num">②</span><span class="label">Scroll ≥ 50%</span><span class="val">5,276</span></div>
+      <div class="funnel-arrow">↓ Drop <span class="funnel-drop">−42%</span></div>
+      <div class="funnel-step"><span class="num">③</span><span class="label">Scroll ≥ 90% (engaged)</span><span class="val">3,060</span></div>
+      <div class="funnel-arrow">↓ Drop <span class="funnel-drop">−87%</span></div>
+      <div class="funnel-step" style="border-color:var(--gold);background:rgba(255,197,43,.05)">
+        <span class="num">④</span>
+        <span class="label">Amazon CTA Click<br><span style="font-size:10px;color:var(--text-dim)">(prpage_amazon_btn_click)</span></span>
+        <span class="val" style="color:var(--text-dim)">—</span>
+      </div>
+    </div>
+    <p style="margin-top:14px;font-size:11px;color:var(--text-sub);line-height:1.5">
+      💡 <b style="color:#fff">Industry benchmark:</b> Bridge page → Amazon CTR usually 8-15%. Expect ~680-1,275 clicks at current traffic once data accumulates.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Device Breakdown</div>
+        <div class="card-sub">Bridge page visitors</div>
+      </div>
+    </div>
+    <div class="donut-wrap">
+      <div class="donut-canvas">
+        <canvas id="deviceDonut" width="140" height="140"></canvas>
+        <div class="donut-canvas-center">
+          <div class="n">92%</div>
+          <div class="l">Mobile</div>
+        </div>
+      </div>
+      <div class="donut-legend">
+        <div class="legend-row">
+          <span class="l"><span class="dot" style="background:var(--gold)"></span>Mobile</span>
+          <span class="v">7,829 (92%)</span>
+        </div>
+        <div class="legend-row">
+          <span class="l"><span class="dot" style="background:var(--blue)"></span>Desktop</span>
+          <span class="v">596 (7%)</span>
+        </div>
+        <div class="legend-row">
+          <span class="l"><span class="dot" style="background:var(--purple)"></span>Tablet</span>
+          <span class="v">85 (1%)</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px;padding:12px;background:var(--bg-card-2);border-radius:8px;font-size:12px;color:var(--text-sub)">
+      📱 <b style="color:#fff">Action:</b> Mobile-first traffic — Sticky CTA likely strongest performer once tracked.
+    </div>
+  </div>
+</div>
+
+<!-- ============= Section 5: Audience ============= -->
+<div class="sect-head">
+  <h2>Audience · Aging-Conscious Heroines (45-64)</h2>
+</div>
+
+<div class="row k2">
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Age Distribution</div>
+        <div class="card-sub">Target hit rate vs Meta plan</div>
+      </div>
+      <span class="card-tag good">On target</span>
+    </div>
+    <div class="age-table">
+      <div class="age-row">
+        <span class="age-label" style="font-size:12px;color:var(--text-sub)">18-24</span>
+        <div class="age-bar-wrap"><div class="age-bar" style="width:3%"></div></div>
+        <span class="age-pct">3%</span>
+      </div>
+      <div class="age-row">
+        <span class="age-label" style="font-size:12px;color:var(--text-sub)">25-34</span>
+        <div class="age-bar-wrap"><div class="age-bar" style="width:9%"></div></div>
+        <span class="age-pct">9%</span>
+      </div>
+      <div class="age-row">
+        <span class="age-label" style="font-size:12px;color:var(--text-sub)">35-44</span>
+        <div class="age-bar-wrap"><div class="age-bar" style="width:15%"></div></div>
+        <span class="age-pct">15%</span>
+      </div>
+      <div class="age-row target">
+        <span class="age-label" style="font-size:12px">45-54 ★</span>
+        <div class="age-bar-wrap"><div class="age-bar" style="width:24%"></div></div>
+        <span class="age-pct">24%</span>
+      </div>
+      <div class="age-row target">
+        <span class="age-label" style="font-size:12px">55-64 ★</span>
+        <div class="age-bar-wrap"><div class="age-bar" style="width:28%"></div></div>
+        <span class="age-pct">28%</span>
+      </div>
+      <div class="age-row target">
+        <span class="age-label" style="font-size:12px">65+ ★</span>
+        <div class="age-bar-wrap"><div class="age-bar" style="width:21%"></div></div>
+        <span class="age-pct">21%</span>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:12px;background:var(--bg-card-2);border-radius:8px;font-size:12px;color:var(--text-sub)">
+      🎯 <b style="color:var(--gold)">73%</b> of bridge page traffic is 45+ → on-target with Meta TA strategy.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Top Countries · Live</div>
+        <div class="card-sub">Last 30 minutes</div>
+      </div>
+    </div>
+    <div class="country-list">
+      <div class="country-row"><span class="flag">🇳🇿</span><span class="name">New Zealand</span><span class="v">14</span></div>
+      <div class="country-row" style="background:linear-gradient(90deg,rgba(255,197,43,.1),var(--bg-card-2))">
+        <span class="flag">🇺🇸</span><span class="name" style="color:var(--gold);font-weight:700">United States ★ TA</span><span class="v">10</span>
+      </div>
+      <div class="country-row"><span class="flag">🇰🇷</span><span class="name">South Korea</span><span class="v">3</span></div>
+      <div class="country-row"><span class="flag">🇦🇺</span><span class="name">Australia</span><span class="v">2</span></div>
+      <div class="country-row"><span class="flag">🇨🇦</span><span class="name">Canada</span><span class="v">2</span></div>
+      <div class="country-row"><span class="flag">🇯🇵</span><span class="name">Japan</span><span class="v">1</span></div>
+      <div class="country-row"><span class="flag">🇹🇼</span><span class="name">Taiwan</span><span class="v">1</span></div>
+      <div class="country-row"><span class="flag">🇬🇧</span><span class="name">United Kingdom</span><span class="v">1</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= Section 6: Events catalog ============= -->
+<div class="sect-head">
+  <h2>Events · Last 30 min</h2>
+  <div class="meta">From GA4 G-F1NFDHM71S</div>
+</div>
+
+<div class="card">
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:560px">
+      <thead>
+        <tr style="text-align:left;color:var(--text-sub);border-bottom:1px solid var(--border);font-size:11px;letter-spacing:.1em;text-transform:uppercase">
+          <th style="padding:10px 12px">Event Name</th>
+          <th style="padding:10px 12px;text-align:right">Count</th>
+          <th style="padding:10px 12px;text-align:right">% of Total</th>
+          <th style="padding:10px 12px">Status</th>
+        </tr>
+      </thead>
+      <tbody style="font-family:var(--mono);font-size:12px">
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:11px 12px;color:#fff">page_view</td><td style="padding:11px 12px;text-align:right;color:var(--gold)">50</td><td style="padding:11px 12px;text-align:right;color:var(--text-sub)">27.0%</td><td style="padding:11px 12px"><span class="card-tag good" style="font-family:var(--font)">Live</span></td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:11px 12px;color:#fff">session_start</td><td style="padding:11px 12px;text-align:right;color:var(--gold)">37</td><td style="padding:11px 12px;text-align:right;color:var(--text-sub)">20.0%</td><td style="padding:11px 12px"><span class="card-tag good" style="font-family:var(--font)">Live</span></td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:11px 12px;color:#fff">view_item</td><td style="padding:11px 12px;text-align:right;color:var(--gold)">34</td><td style="padding:11px 12px;text-align:right;color:var(--text-sub)">18.4%</td><td style="padding:11px 12px"><span class="card-tag good" style="font-family:var(--font)">Live</span></td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:11px 12px;color:#fff">first_visit</td><td style="padding:11px 12px;text-align:right;color:var(--gold)">32</td><td style="padding:11px 12px;text-align:right;color:var(--text-sub)">17.3%</td><td style="padding:11px 12px"><span class="card-tag good" style="font-family:var(--font)">Live</span></td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:11px 12px;color:#fff">user_engagement</td><td style="padding:11px 12px;text-align:right;color:var(--gold)">20</td><td style="padding:11px 12px;text-align:right;color:var(--text-sub)">10.8%</td><td style="padding:11px 12px"><span class="card-tag good" style="font-family:var(--font)">Live</span></td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:11px 12px;color:#fff">scroll</td><td style="padding:11px 12px;text-align:right;color:var(--gold)">8</td><td style="padding:11px 12px;text-align:right;color:var(--text-sub)">4.3%</td><td style="padding:11px 12px"><span class="card-tag good" style="font-family:var(--font)">Live</span></td></tr>
+        <tr style="background:rgba(74,222,128,.05)"><td style="padding:11px 12px;color:var(--green)">prpage_amazon_btn_click</td><td style="padding:11px 12px;text-align:right;color:var(--text-dim)">—</td><td style="padding:11px 12px;text-align:right;color:var(--text-dim)">—</td><td style="padding:11px 12px"><span class="card-tag good" style="font-family:var(--font)">GTM Live</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div>
+    Container: <code>GTM-59S3JWFN</code> · Property: <code>G-F1NFDHM71S</code> · Account: 336235057
+  </div>
+  <div>
+    Last sync: <code id="syncTime">—</code> · Built with Inter + Chart.js
+  </div>
+</div>
+
+<script>
+document.getElementById('syncTime').textContent = new Date().toLocaleString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+const goldStroke = '#ffc52b';
+const goldGrad = (ctx) => {
+  const g = ctx.createLinearGradient(0, 0, 0, 220);
+  g.addColorStop(0, 'rgba(255, 197, 43, .35)');
+  g.addColorStop(1, 'rgba(255, 197, 43, 0)');
+  return g;
+};
+
+// Sparkline
+const spark1 = document.getElementById('spark1');
+if (spark1) {
+  const sctx = spark1.getContext('2d');
+  spark1.width = spark1.offsetWidth; spark1.height = 38;
+  new Chart(sctx, {
+    type:'line',
+    data:{ labels: Array(30).fill(''), datasets:[{
+      data:[2,3,1,2,5,4,6,3,2,4,5,7,6,4,3,5,8,6,4,7,8,5,3,4,6,8,7,6,8,5],
+      borderColor: goldStroke, borderWidth: 1.5,
+      pointRadius:0, fill:true, backgroundColor: goldGrad(sctx), tension:0.4
+    }]},
+    options:{
+      responsive:false, animation:false,
+      plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+      scales:{ x:{display:false}, y:{display:false} }
+    }
+  });
+}
+
+// Trend chart
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+new Chart(trendCtx, {
+  type:'line',
+  data:{
+    labels: ['5/7','5/9','5/11','5/13','5/15','5/17','5/19','5/21','5/23','5/25','5/27','5/29','5/31','6/2','6/4'],
+    datasets:[{
+      label:'Page views',
+      data:[180,220,250,290,310,280,260,310,360,400,420,380,410,460,510],
+      borderColor: goldStroke, borderWidth: 2,
+      pointRadius:0, pointHoverRadius:6, pointBackgroundColor: goldStroke,
+      tension:0.36, fill:true, backgroundColor: goldGrad(trendCtx)
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#15151a', borderColor:'#26262e', borderWidth:1,
+        titleColor:'#fff', bodyColor:'#ffc52b', padding:10, displayColors:false
+      }
+    },
+    scales:{
+      x:{ grid:{display:false}, ticks:{color:'#5a5a64',font:{size:10}} },
+      y:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#5a5a64',font:{size:10}} }
+    }
+  }
+});
+
+// Device donut
+const dctx = document.getElementById('deviceDonut').getContext('2d');
+new Chart(dctx, {
+  type:'doughnut',
+  data:{
+    label
