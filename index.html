@@ -13,10 +13,13 @@
   .wrap { max-width: 560px; width: 100%; }
   h1 { color: #fff; font-size: 26px; margin-bottom: 6px; }
   .sub { color: rgba(255,255,255,.65); font-size: 13px; margin-bottom: 26px; }
+  .section-label { color: rgba(255,255,255,.45); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 8px; }
   a.card { display: block; background: #fff; border-radius: 14px; padding: 20px 22px;
     margin-bottom: 14px; text-decoration: none; color: #16181d;
     box-shadow: 0 4px 16px rgba(0,0,0,.25); transition: transform .12s; }
   a.card:hover { transform: translateY(-2px); }
+  a.card.amazon { border-left: 4px solid #4a5491; }
   .card .t { font-size: 17px; font-weight: 800; margin-bottom: 4px; }
   .card .d { font-size: 12.5px; color: #6b7280; line-height: 1.55; }
   .lock { color: rgba(255,255,255,.5); font-size: 11.5px; text-align: center; margin-top: 16px; }
@@ -24,8 +27,16 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>📊 Meta Ads Dashboards</h1>
-  <div class="sub">성분에디터 아마존 — Main 4233 · Bella EGF 7831 · 2026-05-05 ~ 06-03</div>
+  <h1>📊 Ads Dashboards</h1>
+  <div class="sub">성분에디터 아마존 — Main 4233 · Bella EGF 7831</div>
+
+  <div class="section-label">Amazon Ads</div>
+  <a class="card amazon" href="amazon-weekly.html">
+    <div class="t">📊 Amazon Ads 주간회의 대시보드</div>
+    <div class="d">W1~W3 주차별 KPI · 일별 ROAS 추이 · Main/Bella 분석 · 회의 안건 7개 · 매주 월요일 자동 갱신</div>
+  </a>
+
+  <div class="section-label">Meta Ads</div>
   <a class="card" href="meta-amazon.html">
     <div class="t">🛒 Meta × Amazon 결합</div>
     <div class="d">Meta 광고비에 Amazon Attribution 매칭 — Amazon Sales · ROAS · DPV · ATC · 구매까지. 데이터 가장 풍부 (Main 계정만)</div>
@@ -38,7 +49,7 @@
     <div class="t">📈 Meta 일별 경량판</div>
     <div class="d">Main+Bella 일별 지표만 가볍게 — 정렬 가능한 테이블, Meta 픽셀 구매/ROAS</div>
   </a>
-  <div class="lock">🔒 각 대시보드는 비밀번호로 보호되어 있습니다</div>
+  <div class="lock">🔒 Meta 대시보드는 비밀번호로 보호되어 있습니다</div>
 </div>
 </body>
 </html>
