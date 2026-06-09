@@ -1,0 +1,52 @@
+name: Update Meta Ads Dashboards
+
+on:
+  schedule:
+    - cron: '30 0 * * 1'   # 매주 월요일 00:30 UTC = 09:30 KST
+  workflow_dispatch:        # 수동 실행 허용
+    inputs:
+      days:
+        description: '데이터 기간 (일)'
+        required: false
+        default: '30'
+
+jobs:
+  update-dashboards:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install cryptography
+
+      - name: Run Meta dashboard updater
+        env:
+          META_TOKEN:           ${{ secrets.META_TOKEN }}
+          GH_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+          STATICRYPT_PASSWORD:  ${{ secrets.STATICRYPT_PASSWORD }}
+          BELLA_ACCOUNT_ID:     ${{ secrets.BELLA_ACCOUNT_ID }}
+          SHEETS_ID:            1Hko2pyCvZ3mB-ISx0Y4sGZHK0-dX37QQcqUvcGWEgCI
+          DAYS:                 ${{ github.event.inputs.days || '30' }}
+        run: python scripts/update_meta_dashboards.py
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## ✅ Meta 대시보드 갱신 완료" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- campaigns.html" >> $GITHUB_STEP_SUMMARY
+          echo "- meta-daily.html" >> $GITHUB_STEP_SUMMARY
+          echo "- meta-combined.html" >> $GITHUB_STEP_SUMMARY
+          echo "- meta-amazon.html" >> $GITHUB_STEP_SUMMARY
+          echo "- ads_daily_withAmazonSales/index.html" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "갱신 시각: $(TZ=Asia/Seoul date)" >> $GITHUB_STEP_SUMMARY
