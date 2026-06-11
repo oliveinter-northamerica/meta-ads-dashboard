@@ -1,556 +1,247 @@
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
+<html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Amazon Ads 주간회의 대시보드 — 2026-06-08</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<title>Amazon Ads 주간회의 대시보드 — 2026-06-11</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  :root {
-    --hdr-from: #2d3561;
-    --hdr-to:   #4a5491;
-    --green:    #16a34a;
-    --yellow:   #d97706;
-    --red:      #dc2626;
-    --alarm-bg: #fef2f2;
-    --alarm-border: #fca5a5;
-    --mono:     #f8fafc;
-    --border:   #e2e8f0;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; color: #1e293b; font-size: 14px; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#0f1420;color:#e6e9f0;padding:24px;max-width:1280px;margin:0 auto}
+h1{font-size:26px;margin-bottom:6px} h2{font-size:19px;margin:34px 0 14px;border-left:4px solid #4f8cff;padding-left:10px}
+h3{font-size:16px;margin:18px 0 10px}
+.meta{color:#9aa3b5;font-size:14px;margin-bottom:14px} .meta b{color:#ffd166}
+.badges{margin-bottom:8px} .badge{display:inline-block;padding:5px 12px;border-radius:14px;font-size:13px;font-weight:600;margin-right:8px;margin-bottom:6px}
+.badge.ok{background:#143d2b;color:#3ddc84} .badge.bad{background:#3d1a1a;color:#ff6b6b} .badge.warn{background:#3d3214;color:#ffd166}
+.grid{display:grid;gap:16px} .g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))} .g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.card{background:#1a2132;border:1px solid #2a3550;border-radius:12px;padding:18px}
+.wk-title{font-size:17px;font-weight:700;color:#4f8cff} .wk-sub{font-size:12.5px;color:#9aa3b5;margin-bottom:12px}
+.kpi-label{font-size:12.5px;color:#9aa3b5;margin-top:8px} .kpi-big{font-size:24px;font-weight:700}
+.kpi-roas{font-size:30px;font-weight:800} .kpi-roas.good{color:#3ddc84} .kpi-roas.poor{color:#ff6b6b}
+.kpi-note{font-size:12.5px;margin-top:2px} .kpi-note.good{color:#3ddc84} .kpi-note.poor{color:#ff6b6b}
+hr{border:none;border-top:1px solid #2a3550;margin:12px 0}
+.row{display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;color:#c7cede} .row b{color:#fff}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{padding:7px 9px;text-align:right;border-bottom:1px solid #2a3550} th{color:#9aa3b5;font-weight:600}
+td:first-child,th:first-child{text-align:left}
+tr.wk td{background:#222b42;color:#4f8cff;font-weight:700;text-align:left}
+tr.tot td{background:#1f2840;font-weight:700}
+.insight{border-left:4px solid;padding:12px 14px;margin-bottom:12px;border-radius:6px;background:#1a2132;font-size:13.5px;line-height:1.55}
+.insight h4{font-size:14.5px;margin-bottom:6px}
+.i-red{border-color:#ff6b6b} .i-yellow{border-color:#ffd166} .i-green{border-color:#3ddc84} .i-blue{border-color:#4f8cff}
+.agenda{background:#1a2132;border:1px solid #2a3550;border-radius:10px;padding:14px 16px;margin-bottom:10px;font-size:13.5px;line-height:1.5}
+.agenda b{color:#4f8cff}
+.camp{font-size:13.5px;padding:5px 0;display:flex;justify-content:space-between;border-bottom:1px solid #232d47}
+.on{color:#3ddc84;font-weight:700} .off{color:#ff6b6b;font-weight:700} .pause{color:#ffd166;font-weight:700}
+.chart-box{background:#1a2132;border:1px solid #2a3550;border-radius:12px;padding:16px} canvas{max-height:300px}
+</style></head><body>
 
-  /* ── HEADER ── */
-  .header {
-    background: linear-gradient(135deg, var(--hdr-from) 0%, var(--hdr-to) 100%);
-    color: #fff; padding: 28px 32px 20px;
-  }
-  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-  .header .sub { margin-top: 4px; font-size: 13px; opacity: 0.78; }
-  .header .badge-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .badge { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
-           border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 600; }
-  .badge.alarm { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+<h1>📊 Amazon Ads 주간회의 대시보드</h1>
+<div class="meta">자동 갱신: <b>2026-06-11 (목) 09:30</b> · 기준 데이터: 2026-05-18 ~ 2026-06-09 · 6월 ROAS 목표: <b>80%</b></div>
+<div class="badges">
+  <span class="badge bad">W1 73.83% ↓목표미달</span><span class="badge bad">W2 65.97% ↓목표미달</span><span class="badge ok">W3 86.44% ✅ 목표초과</span>
+  <span class="badge warn">⚠ 알람 3개</span>
+</div>
 
-  /* ── LAYOUT ── */
-  .container { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
-  .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase;
-                   letter-spacing: 0.8px; color: #64748b; margin: 28px 0 12px; }
+<h2>주차별 핵심 KPI</h2>
+<div class="grid g3">
 
-  /* ── WEEK CARDS ── */
-  .week-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .wcard { background: #fff; border-radius: 12px; padding: 20px; border-top: 4px solid; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  .wcard.w1 { border-color: var(--green); }
-  .wcard.w2 { border-color: var(--yellow); }
-  .wcard.w3-ok  { border-color: var(--green); }
-  .wcard.w3-bad { border-color: var(--red); }
-  .wcard .wlabel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; margin-bottom: 4px; }
-  .wcard .wtitle { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 14px; }
-  .kpi { display: flex; flex-direction: column; margin-bottom: 10px; }
-  .kpi .kname { font-size: 11px; color: #94a3b8; margin-bottom: 2px; }
-  .kpi .kval  { font-size: 20px; font-weight: 700; line-height: 1.1; }
-  .kpi .ksub  { font-size: 12px; color: #64748b; margin-top: 2px; }
-  .roas-ok  { color: var(--green); }
-  .roas-bad { color: var(--red); }
-  .roas-mid { color: var(--yellow); }
-  .divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
-  .account-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
-  .account-row .aname { color: #64748b; }
-  .partial-tag { font-size: 10px; font-weight: 600; background: #fef3c7; color: #92400e;
-                 border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
+  <div class="card week">
+    <div class="wk-title">W1 (2주 전)</div><div class="wk-sub">2026-05-18 ~ 05-24 (7일 완전)</div>
+    <div class="kpi-label">총 매출</div><div class="kpi-big">₩10,742,861</div>
+    <div class="kpi-label">광고비 ₩14,551,570</div>
+    <div class="kpi-label">전체 ROAS (목표 80% 미달)</div>
+    <div class="kpi-roas poor">73.83%</div>
+    <div class="kpi-note poor">목표 -6.17%p 미달</div>
+    <hr>
+    <div class="row"><span>Main (4233)</span><b>74.74%</b> ROAS · ₩10,519,707</div>
+    <div class="row"><span>Bella (7831)</span><b>46.91%</b> ROAS · ₩223,155</div>
+    <div class="row"><span>Main 매출 비중</span><b>97.92%</b></div>
+  </div>
 
-  /* ── CUMULATIVE + WoW ── */
-  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .stat-card h3 { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 12px; }
-  .wow-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0;
-             border-bottom: 1px solid var(--border); }
-  .wow-row:last-child { border-bottom: none; }
-  .wow-label { font-size: 12px; color: #64748b; }
-  .wow-val { font-size: 13px; font-weight: 700; }
-  .pos { color: var(--green); }
-  .neg { color: var(--red); }
+  <div class="card week">
+    <div class="wk-title">W2 (지지난주)</div><div class="wk-sub">2026-05-25 ~ 05-31 (7일 완전)</div>
+    <div class="kpi-label">총 매출</div><div class="kpi-big">₩19,645,357</div>
+    <div class="kpi-label">광고비 ₩29,777,001</div>
+    <div class="kpi-label">전체 ROAS (목표 80% 미달)</div>
+    <div class="kpi-roas poor">65.97%</div>
+    <div class="kpi-note poor">목표 -14.03%p 미달</div>
+    <hr>
+    <div class="row"><span>Main (4233)</span><b>66.40%</b> ROAS · ₩19,248,629</div>
+    <div class="row"><span>Bella (7831)</span><b>50.38%</b> ROAS · ₩396,728</div>
+    <div class="row"><span>Main 매출 비중</span><b>97.98%</b></div>
+  </div>
 
-  /* ── CHARTS ── */
-  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .chart-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .chart-card h3 { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 14px; }
-  .chart-wrap { position: relative; height: 200px; }
-
-  /* ── TABLE ── */
-  .tbl-wrap { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  thead tr { background: linear-gradient(135deg, var(--hdr-from), var(--hdr-to)); color: #fff; }
-  thead th { padding: 9px 12px; text-align: right; font-weight: 600; white-space: nowrap; }
-  thead th:first-child { text-align: left; }
-  tbody tr:nth-child(even) { background: #f8fafc; }
-  tbody tr:hover { background: #eff6ff; }
-  tbody td { padding: 8px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
-  tbody td:first-child { text-align: left; font-weight: 500; }
-  .week-sep { border-top: 2px solid #c7d2fe !important; }
-  .roas-cell-ok  { color: var(--green); font-weight: 700; }
-  .roas-cell-bad { color: var(--red);   font-weight: 700; }
-  .roas-cell-mid { color: var(--yellow);font-weight: 700; }
-  .no-data { color: #94a3b8; }
-
-  /* ── ALARMS ── */
-  .alarm-card { background: var(--alarm-bg); border: 1px solid var(--alarm-border);
-                border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; }
-  .alarm-card.warn { background: #fffbeb; border-color: #fcd34d; }
-  .alarm-card.info { background: #eff6ff; border-color: #93c5fd; }
-  .alarm-title { font-size: 13px; font-weight: 700; color: #991b1b; }
-  .alarm-card.warn .alarm-title { color: #92400e; }
-  .alarm-card.info .alarm-title { color: #1e40af; }
-  .alarm-body { font-size: 12px; color: #64748b; margin-top: 4px; line-height: 1.6; }
-
-  /* ── AGENDA ── */
-  .agenda-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .agenda-item { background: #fff; border-radius: 10px; padding: 14px 16px;
-                 border-left: 4px solid var(--hdr-to); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-  .agenda-num { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
-  .agenda-q { font-size: 13px; font-weight: 600; color: #1e293b; margin: 4px 0; }
-  .agenda-hint { font-size: 11px; color: #64748b; line-height: 1.5; }
-
-  /* ── THIS WEEK PREVIEW ── */
-  .preview-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-                  border: 2px dashed #c7d2fe; }
-  .preview-card h3 { font-size: 13px; font-weight: 700; color: #4338ca; margin-bottom: 8px; }
-  .preview-note { font-size: 12px; color: #64748b; }
-
-  /* ── CAMPAIGN TABLE ── */
-  .campaign-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); align-items: center; }
-  .campaign-row:last-child { border-bottom: none; }
-  .camp-name { font-size: 12px; color: #334155; }
-  .camp-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
-  .camp-on  { background: #dcfce7; color: #166534; }
-  .camp-off { background: #f1f5f9; color: #64748b; }
-
-  @media (max-width: 768px) {
-    .week-cards, .charts-grid, .agenda-grid, .stats-row { grid-template-columns: 1fr; }
-  }
-</style>
-</head>
-<body>
-
-<!-- ── HEADER ────────────────────────────────── -->
-<div class="header">
-  <h1>📊 Amazon Ads 주간회의 대시보드</h1>
-  <div class="sub">자동 갱신: 2026-06-08 (월) 07:00 · 기준 데이터: 2026-05-18 ~ 2026-06-06 · 6월 ROAS 목표: <b>80%</b></div>
-  <div class="badge-row">
-    <span class="badge alarm">W1 73.83% ↓목표미달</span>
-    <span class="badge alarm">W2 65.97% ↓목표미달</span>
-    <span class="badge" style="background:rgba(22,163,74,0.25);border-color:rgba(22,163,74,0.5);color:#fff">W3 92.65% ✅ 목표초과</span>
-    <span class="badge alarm">⚠ 알람 3개</span>
+  <div class="card week">
+    <div class="wk-title">W3 (지난주)</div><div class="wk-sub">2026-06-01 ~ 06-07 (7일 완전)</div>
+    <div class="kpi-label">총 매출</div><div class="kpi-big">₩18,389,175</div>
+    <div class="kpi-label">광고비 ₩21,274,698</div>
+    <div class="kpi-label">전체 ROAS (목표 80% 초과 ✅)</div>
+    <div class="kpi-roas good">86.44%</div>
+    <div class="kpi-note good">목표 +6.44%p 초과 달성</div>
+    <hr>
+    <div class="row"><span>Main (4233)</span><b>90.87%</b> ROAS · ₩18,004,020</div>
+    <div class="row"><span>Bella (7831)</span><b>26.33%</b> ROAS · ₩385,155</div>
+    <div class="row"><span>Main 매출 비중</span><b>97.91%</b></div>
   </div>
 </div>
 
-<div class="container">
-
-  <!-- ── WEEK CARDS ────────────────────────────── -->
-  <div class="section-title">주차별 핵심 KPI</div>
-  <div class="week-cards">
-
-    <!-- W1 -->
-    <div class="wcard w1">
-      <div class="wlabel">W1 (3주 전)</div>
-      <div class="wtitle">2026-05-18 ~ 05-24 <span style="font-size:11px;color:#94a3b8">(7일 완전)</span></div>
-      <div class="kpi">
-        <div class="kname">총 매출</div>
-        <div class="kval">₩10,742,861</div>
-        <div class="ksub">광고비 ₩14,551,570</div>
-      </div>
-      <div class="kpi">
-        <div class="kname">전체 ROAS <span style="font-size:10px;color:#dc2626;font-weight:600">(목표 80% 미달)</span></div>
-        <div class="kval roas-bad">73.83%</div>
-      </div>
-      <hr class="divider">
-      <div class="account-row"><span class="aname">Main (4233)</span><span><b>74.74%</b> ROAS · ₩10,519,707</span></div>
-      <div class="account-row"><span class="aname">Bella (7831)</span><span><b>46.91%</b> ROAS · ₩223,155</span></div>
-      <div class="account-row" style="margin-top:6px"><span class="aname">Main 매출 비중</span><span><b>97.92%</b></span></div>
-    </div>
-
-    <!-- W2 -->
-    <div class="wcard w2">
-      <div class="wlabel">W2 (2주 전)</div>
-      <div class="wtitle">2026-05-25 ~ 05-31 <span style="font-size:11px;color:#94a3b8">(7일 완전)</span></div>
-      <div class="kpi">
-        <div class="kname">총 매출</div>
-        <div class="kval">₩19,645,357</div>
-        <div class="ksub">광고비 ₩29,777,001</div>
-      </div>
-      <div class="kpi">
-        <div class="kname">전체 ROAS <span style="font-size:10px;color:#dc2626;font-weight:600">(목표 80% 미달)</span></div>
-        <div class="kval roas-bad">65.97%</div>
-      </div>
-      <hr class="divider">
-      <div class="account-row"><span class="aname">Main (4233)</span><span><b>66.40%</b> ROAS · ₩19,248,629</span></div>
-      <div class="account-row"><span class="aname">Bella (7831)</span><span><b>50.38%</b> ROAS · ₩396,728</span></div>
-      <div class="account-row" style="margin-top:6px"><span class="aname">Main 매출 비중</span><span><b>97.98%</b></span></div>
-    </div>
-
-    <!-- W3 -->
-    <div class="wcard w3-ok">
-      <div class="wlabel">W3 (지난주)</div>
-      <div class="wtitle">2026-06-01 ~ 06-07 <span class="partial-tag">부분 6일</span></div>
-      <div class="kpi">
-        <div class="kname">총 매출</div>
-        <div class="kval">₩15,924,210</div>
-        <div class="ksub">광고비 ₩17,187,005</div>
-      </div>
-      <div class="kpi">
-        <div class="kname">전체 ROAS <span style="font-size:10px;color:#16a34a;font-weight:600">(목표 80% 초과 ✅)</span></div>
-        <div class="kval roas-ok">92.65%</div>
-        <div class="ksub" style="color:#16a34a">목표 +12.65%p 초과 달성</div>
-      </div>
-      <hr class="divider">
-      <div class="account-row"><span class="aname">Main (4233)</span><span><b>97.22%</b> ROAS · ₩15,619,530</span></div>
-      <div class="account-row"><span class="aname">Bella (7831)</span><span><b>27.20%</b> ROAS · ₩304,680</span></div>
-      <div class="account-row" style="margin-top:6px"><span class="aname">Main 매출 비중</span><span><b>98.09%</b></span></div>
-    </div>
+<div class="grid g2" style="margin-top:16px">
+  <div class="card">
+    <h3>📅 6월 누적 성과 (06-01 ~ 06-09)</h3>
+    <div class="row"><span>6월 누적 매출</span><b>₩21,900,555</b></div>
+    <div class="row"><span>6월 누적 광고비</span><b>₩29,006,729</b></div>
+    <div class="row"><span>6월 누적 ROAS (목표 80% 미달 ⚠)</span><b>75.50%</b></div>
+    <div class="row"><span>Main 누적 매출</span><b>₩21,351,825 (97.49%)</b></div>
+    <div class="row"><span>Bella 누적 매출</span><b>₩548,730 (2.51%)</b></div>
   </div>
-
-  <!-- ── CUMULATIVE + WoW ────────────────────────── -->
-  <div class="stats-row" style="margin-top:16px">
-    <div class="stat-card">
-      <h3>📅 6월 누적 성과</h3>
-      <div class="wow-row"><span class="wow-label">6월 누적 매출</span><span class="wow-val">₩15,924,210</span></div>
-      <div class="wow-row"><span class="wow-label">6월 누적 광고비</span><span class="wow-val">₩17,187,005</span></div>
-      <div class="wow-row"><span class="wow-label">6월 누적 ROAS <span style="font-size:11px;color:#16a34a">(목표 80% ✅)</span></span><span class="wow-val roas-ok">92.65%</span></div>
-      <div class="wow-row"><span class="wow-label">Main 누적 매출</span><span class="wow-val">₩15,619,530 (98.09%)</span></div>
-      <div class="wow-row"><span class="wow-label">Bella 누적 매출</span><span class="wow-val">₩304,680 (1.91%)</span></div>
-    </div>
-    <div class="stat-card">
-      <h3>📈 WoW 변화율</h3>
-      <div class="wow-row"><span class="wow-label">매출 (W1→W2)</span><span class="wow-val pos">+82.9%</span></div>
-      <div class="wow-row"><span class="wow-label">광고비 (W1→W2)</span><span class="wow-val neg">+104.6% ⚠</span></div>
-      <div class="wow-row"><span class="wow-label">ROAS (W1→W2)</span><span class="wow-val neg">-10.6%</span></div>
-      <hr class="divider">
-      <div class="wow-row"><span class="wow-label">매출 (W2→W3)</span><span class="wow-val neg">-18.9%</span></div>
-      <div class="wow-row"><span class="wow-label">광고비 (W2→W3)</span><span class="wow-val pos">-42.3% ↓</span></div>
-      <div class="wow-row"><span class="wow-label">ROAS (W2→W3)</span><span class="wow-val pos">+40.4% ↑</span></div>
-    </div>
+  <div class="card">
+    <h3>📈 WoW 변화율</h3>
+    <div class="row"><span>매출 (W1→W2)</span><b>+82.9%</b></div>
+    <div class="row"><span>광고비 (W1→W2)</span><b>+104.6% ⚠</b></div>
+    <div class="row"><span>ROAS (W1→W2)</span><b>-10.6%</b></div>
+    <hr>
+    <div class="row"><span>매출 (W2→W3)</span><b>-6.4%</b></div>
+    <div class="row"><span>광고비 (W2→W3)</span><b>-28.6% ↓</b></div>
+    <div class="row"><span>ROAS (W2→W3)</span><b>+31.0% ↑</b></div>
   </div>
+</div>
 
-  <!-- ── CHARTS ────────────────────────────────── -->
-  <div class="section-title">차트 분석</div>
-  <div class="charts-grid">
-    <div class="chart-card">
-      <h3>① 주차별 매출/광고비/ROAS</h3>
-      <div class="chart-wrap"><canvas id="chartWeekly"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>② 일별 ROAS 추이 (W1~W3)</h3>
-      <div class="chart-wrap"><canvas id="chartDailyRoas"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>③ 일별 매출 — Main vs Bella (W1~W3)</h3>
-      <div class="chart-wrap"><canvas id="chartMainBella"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>④ 계정별 주차 ROAS 비교</h3>
-      <div class="chart-wrap"><canvas id="chartAccount"></canvas></div>
-    </div>
+<h2>차트 분석</h2>
+<div class="grid g2">
+  <div class="chart-box"><h3>① 주차별 매출/광고비/ROAS</h3><canvas id="c1"></canvas></div>
+  <div class="chart-box"><h3>② 일별 ROAS 추이 (W1~W3)</h3><canvas id="c2"></canvas></div>
+  <div class="chart-box"><h3>③ 일별 매출 — Main vs Bella (W1~W3)</h3><canvas id="c3"></canvas></div>
+  <div class="chart-box"><h3>④ 계정별 주차 ROAS 비교</h3><canvas id="c4"></canvas></div>
+</div>
+
+<h2>계정별 주차별 상세</h2>
+<div class="card" style="overflow-x:auto">
+<table>
+<tr><th>계정</th><th>W1 매출</th><th>W1 광고비</th><th>W1 ROAS</th><th>W2 매출</th><th>W2 광고비</th><th>W2 ROAS</th><th>W3 매출</th><th>W3 광고비</th><th>W3 ROAS</th></tr>
+<tr class="tot"><td>TOTAL</td><td>₩10,742,861</td><td>₩14,551,570</td><td>73.83%</td><td>₩19,645,357</td><td>₩29,777,001</td><td>65.97%</td><td>₩18,389,175</td><td>₩21,274,698</td><td>86.44%</td></tr>
+<tr><td>Main (4233)</td><td>₩10,519,707</td><td>₩14,075,860</td><td>74.74%</td><td>₩19,248,629</td><td>₩28,989,482</td><td>66.40%</td><td>₩18,004,020</td><td>₩19,811,903</td><td>90.87%</td></tr>
+<tr><td>Bella (7831)</td><td>₩223,155</td><td>₩475,710</td><td>46.91%</td><td>₩396,728</td><td>₩787,519</td><td>50.38%</td><td>₩385,155</td><td>₩1,462,795</td><td>26.33%</td></tr>
+</table>
+</div>
+
+<h2>일별 상세 (21일 · W1+W2+W3)</h2>
+<div class="card" style="overflow-x:auto">
+<table>
+<tr><th>날짜</th><th>Total 매출</th><th>Total 광고비</th><th>ROAS</th><th>Main 매출</th><th>Main ROAS</th><th>Bella 매출</th><th>Bella ROAS</th></tr>
+<tr class="wk"><td colspan="8">W1 · 2026-05-18 ~ 05-24 (7일 완전)</td></tr>
+<tr><td>05-18 월</td><td>₩1,022,562</td><td>₩1,555,790</td><td>65.7%</td><td>₩985,221</td><td>65.8%</td><td>₩37,340</td><td>63.4%</td></tr>
+<tr><td>05-19 화</td><td>₩938,246</td><td>₩1,413,676</td><td>66.4%</td><td>₩938,246</td><td>69.9%</td><td>₩0</td><td>—</td></tr>
+<tr><td>05-20 수</td><td>₩1,420,030</td><td>₩1,037,918</td><td>136.8%</td><td>₩1,345,705</td><td>138.1%</td><td>₩74,326</td><td>117.5%</td></tr>
+<tr><td>05-21 목</td><td>₩951,921</td><td>₩1,884,160</td><td>50.5%</td><td>₩877,596</td><td>48.1%</td><td>₩74,326</td><td>121.9%</td></tr>
+<tr><td>05-22 금</td><td>₩1,745,068</td><td>₩2,705,594</td><td>64.5%</td><td>₩1,745,068</td><td>66.0%</td><td>₩0</td><td>—</td></tr>
+<tr><td>05-23 토</td><td>₩2,428,118</td><td>₩3,204,048</td><td>75.8%</td><td>₩2,390,955</td><td>76.3%</td><td>₩37,163</td><td>51.7%</td></tr>
+<tr><td>05-24 일</td><td>₩2,236,916</td><td>₩2,750,384</td><td>81.3%</td><td>₩2,236,916</td><td>84.0%</td><td>₩0</td><td>—</td></tr>
+<tr class="wk"><td colspan="8">W2 · 2026-05-25 ~ 05-31 (7일 완전)</td></tr>
+<tr><td>05-25 월</td><td>₩2,327,019</td><td>₩2,701,905</td><td>86.1%</td><td>₩2,327,019</td><td>89.1%</td><td>₩0</td><td>—</td></tr>
+<tr><td>05-26 화</td><td>₩2,314,912</td><td>₩3,779,026</td><td>61.3%</td><td>₩2,240,764</td><td>60.6%</td><td>₩74,148</td><td>90.1%</td></tr>
+<tr><td>05-27 수</td><td>₩3,038,455</td><td>₩4,516,197</td><td>67.3%</td><td>₩2,907,697</td><td>65.8%</td><td>₩130,758</td><td>131.6%</td></tr>
+<tr><td>05-28 목</td><td>₩2,867,012</td><td>₩4,739,589</td><td>60.5%</td><td>₩2,867,012</td><td>62.7%</td><td>₩0</td><td>—</td></tr>
+<tr><td>05-29 금</td><td>₩3,060,418</td><td>₩4,611,033</td><td>66.4%</td><td>₩3,060,418</td><td>68.0%</td><td>₩0</td><td>—</td></tr>
+<tr><td>05-30 토</td><td>₩3,577,796</td><td>₩5,079,330</td><td>70.4%</td><td>₩3,503,678</td><td>70.8%</td><td>₩74,118</td><td>57.9%</td></tr>
+<tr><td>05-31 일</td><td>₩2,459,745</td><td>₩4,349,921</td><td>56.5%</td><td>₩2,342,041</td><td>55.3%</td><td>₩117,704</td><td>101.5%</td></tr>
+<tr class="wk"><td colspan="8">W3 · 2026-06-01 ~ 06-07 (7일 완전)</td></tr>
+<tr><td>06-01 월</td><td>₩2,305,635</td><td>₩3,303,931</td><td>69.8%</td><td>₩2,305,635</td><td>72.0%</td><td>₩0</td><td>—</td></tr>
+<tr><td>06-02 화</td><td>₩3,997,065</td><td>₩2,743,389</td><td>145.7%</td><td>₩3,961,065</td><td>153.4%</td><td>₩36,000</td><td>22.3%</td></tr>
+<tr><td>06-03 수</td><td>₩2,453,100</td><td>₩2,551,460</td><td>96.1%</td><td>₩2,453,100</td><td>101.0%</td><td>₩0</td><td>—</td></tr>
+<tr><td>06-04 목</td><td>₩1,872,690</td><td>₩2,157,663</td><td>86.8%</td><td>₩1,835,160</td><td>88.9%</td><td>₩37,530</td><td>40.7%</td></tr>
+<tr><td>06-05 금</td><td>₩2,076,225</td><td>₩2,612,502</td><td>79.5%</td><td>₩1,888,575</td><td>80.4%</td><td>₩187,650</td><td>70.9%</td></tr>
+<tr><td>06-06 토</td><td>₩3,378,525</td><td>₩3,822,175</td><td>88.4%</td><td>₩3,335,025</td><td>96.8%</td><td>₩43,500</td><td>11.6%</td></tr>
+<tr><td>06-07 일</td><td>₩2,305,935</td><td>₩4,083,578</td><td>56.5%</td><td>₩2,225,460</td><td>59.5%</td><td>₩80,475</td><td>23.5%</td></tr>
+</table>
+</div>
+
+<h2>이번 주 진행 현황 (W4)</h2>
+<div class="card">
+<h3>🔄 2026-06-08 ~ 06-14 (이번 주 진행 중 · 2일 입력)</h3>
+<p style="font-size:13.5px;line-height:1.6;color:#c7cede">
+06-08~06-09 누적 ROAS <b style="color:#ff6b6b">45.41%</b>로 목표(80%) 대비 크게 미달.
+이틀간 광고비 ₩7,732,031 대비 매출 ₩3,511,380에 그침. 06-10 이후 데이터 미입력.
+W3에서 목표를 초과 달성(86.44%)한 흐름이 W4 초반에 꺾인 상태 — 일별 매출 ≥ 광고비 × 0.8 기준으로 집행 강도를 즉시 점검하세요.</p>
+<div class="grid g3" style="margin-top:12px">
+  <div><div class="kpi-label">W4 누적 매출 (2일)</div><div class="kpi-big">₩3,511,380</div></div>
+  <div><div class="kpi-label">W4 누적 광고비 (2일)</div><div class="kpi-big">₩7,732,031</div></div>
+  <div><div class="kpi-label">W4 누적 ROAS</div><div class="kpi-roas poor">45.41%</div><div class="kpi-note poor">목표(80%) -34.59%p 미달 ⚠</div></div>
+</div>
+</div>
+
+<div class="grid g2" style="margin-top:16px">
+  <div class="card">
+    <h3>🟢 Top 5 활성 캠페인 (W3 기준)</h3>
+    <div class="camp"><span>Main - SP 자동 타겟팅 베스트셀러</span><span class="on">ON</span></div>
+    <div class="camp"><span>Main - SP 수동 키워드 (EGF/세럼)</span><span class="on">ON</span></div>
+    <div class="camp"><span>Main - SB 브랜드 영상 캠페인</span><span class="on">ON</span></div>
+    <div class="camp"><span>Main - SD 제품 타겟팅 (경쟁사)</span><span class="on">ON</span></div>
+    <div class="camp"><span>Bella - SP 자동 (신제품 론칭)</span><span class="on">ON</span></div>
   </div>
-
-  <!-- ── ACCOUNT DETAIL TABLE ─────────────────────── -->
-  <div class="section-title">계정별 주차별 상세</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>계정</th>
-          <th>W1 매출</th><th>W1 광고비</th><th>W1 ROAS</th>
-          <th>W2 매출</th><th>W2 광고비</th><th>W2 ROAS</th>
-          <th>W3 매출</th><th>W3 광고비</th><th>W3 ROAS</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><b>TOTAL</b></td>
-          <td>₩10,742,861</td><td>₩14,551,570</td><td class="roas-cell-bad">73.83%</td>
-          <td>₩19,645,357</td><td>₩29,777,001</td><td class="roas-cell-bad">65.97%</td>
-          <td>₩15,924,210</td><td>₩17,187,005</td><td class="roas-cell-mid">92.65%</td>
-        </tr>
-        <tr>
-          <td>Main (4233)</td>
-          <td>₩10,519,707</td><td>₩14,075,860</td><td class="roas-cell-bad">74.74%</td>
-          <td>₩19,248,629</td><td>₩28,989,482</td><td class="roas-cell-bad">66.40%</td>
-          <td>₩15,619,530</td><td>₩16,066,671</td><td class="roas-cell-mid">97.22%</td>
-        </tr>
-        <tr>
-          <td>Bella (7831)</td>
-          <td>₩223,155</td><td>₩475,710</td><td class="roas-cell-bad">46.91%</td>
-          <td>₩396,728</td><td>₩787,519</td><td class="roas-cell-bad">50.38%</td>
-          <td>₩304,680</td><td>₩1,120,334</td><td class="roas-cell-bad">27.20%</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="card">
+    <h3>🔴 일시 정지 / 저효율 캠페인</h3>
+    <div class="camp"><span>Bella - SP 수동 (CTR 0% 소재)</span><span class="off">OFF</span></div>
+    <div class="camp"><span>Main - SP 넓은 일치 테스트</span><span class="pause">PAUSE</span></div>
+    <div class="camp"><span>Bella - SB 브랜드 (링크 오류)</span><span class="off">OFF</span></div>
+    <div class="camp"><span>Main - SD 카테고리 (ROAS 30%↓)</span><span class="pause">PAUSE</span></div>
+    <div class="camp"><span>Bella - SD 리타겟팅 (전환 0)</span><span class="off">OFF</span></div>
   </div>
+</div>
 
-  <!-- ── DAILY DETAIL TABLE ────────────────────── -->
-  <div class="section-title">일별 상세 (21일 · W1+W2+W3)</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>날짜</th>
-          <th>Total 매출</th><th>Total 광고비</th><th>ROAS</th>
-          <th>Main 매출</th><th>Main ROAS</th>
-          <th>Bella 매출</th><th>Bella ROAS</th>
-        </tr>
-      </thead>
-      <tbody id="dailyTbody">
-        <!-- W1 -->
-        <tr class="week-sep"><td colspan="8" style="background:#f0fdf4;color:#166534;font-weight:700;padding:6px 12px">W1 · 2026-05-18 ~ 05-24 (7일 완전)</td></tr>
-        <tr><td>05-18 월</td><td>₩1,022,562</td><td>₩1,555,790</td><td class="roas-cell-bad">65.7%</td><td>₩985,221</td><td class="roas-cell-bad">65.8%</td><td>₩37,340</td><td class="roas-cell-bad">63.4%</td></tr>
-        <tr><td>05-19 화</td><td>₩938,246</td><td>₩1,413,676</td><td class="roas-cell-bad">66.4%</td><td>₩938,246</td><td class="roas-cell-bad">69.9%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <tr><td>05-20 수</td><td>₩1,420,030</td><td>₩1,037,918</td><td class="roas-cell-ok">136.8%</td><td>₩1,345,705</td><td class="roas-cell-ok">138.1%</td><td>₩74,326</td><td class="roas-cell-ok">117.5%</td></tr>
-        <tr><td>05-21 목</td><td>₩951,921</td><td>₩1,884,160</td><td class="roas-cell-bad">50.5%</td><td>₩877,596</td><td class="roas-cell-bad">48.1%</td><td>₩74,326</td><td class="roas-cell-ok">121.9%</td></tr>
-        <tr><td>05-22 금</td><td>₩1,745,068</td><td>₩2,705,594</td><td class="roas-cell-bad">64.5%</td><td>₩1,745,068</td><td class="roas-cell-bad">66.0%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <tr><td>05-23 토</td><td>₩2,428,118</td><td>₩3,204,048</td><td class="roas-cell-bad">75.8%</td><td>₩2,390,955</td><td class="roas-cell-bad">76.3%</td><td>₩37,163</td><td class="roas-cell-bad">51.7%</td></tr>
-        <tr><td>05-24 일</td><td>₩2,236,916</td><td>₩2,750,384</td><td class="roas-cell-bad">81.3%</td><td>₩2,236,916</td><td class="roas-cell-bad">84.0%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <!-- W2 -->
-        <tr class="week-sep"><td colspan="8" style="background:#fffbeb;color:#92400e;font-weight:700;padding:6px 12px">W2 · 2026-05-25 ~ 05-31 (7일 완전)</td></tr>
-        <tr><td>05-25 월</td><td>₩2,327,019</td><td>₩2,701,905</td><td class="roas-cell-bad">86.1%</td><td>₩2,327,019</td><td class="roas-cell-bad">89.1%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <tr><td>05-26 화</td><td>₩2,314,912</td><td>₩3,779,026</td><td class="roas-cell-bad">61.3%</td><td>₩2,240,764</td><td class="roas-cell-bad">60.6%</td><td>₩74,148</td><td class="roas-cell-mid">90.1%</td></tr>
-        <tr><td>05-27 수</td><td>₩3,038,455</td><td>₩4,516,197</td><td class="roas-cell-bad">67.3%</td><td>₩2,907,697</td><td class="roas-cell-bad">65.8%</td><td>₩130,758</td><td class="roas-cell-ok">131.6%</td></tr>
-        <tr><td>05-28 목</td><td>₩2,867,012</td><td>₩4,739,589</td><td class="roas-cell-bad">60.5%</td><td>₩2,867,012</td><td class="roas-cell-bad">62.7%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <tr><td>05-29 금</td><td>₩3,060,418</td><td>₩4,611,033</td><td class="roas-cell-bad">66.4%</td><td>₩3,060,418</td><td class="roas-cell-bad">68.0%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <tr><td>05-30 토</td><td>₩3,577,796</td><td>₩5,079,330</td><td class="roas-cell-bad">70.4%</td><td>₩3,503,678</td><td class="roas-cell-bad">70.8%</td><td>₩74,118</td><td class="roas-cell-bad">57.9%</td></tr>
-        <tr><td>05-31 일</td><td>₩2,459,745</td><td>₩4,349,921</td><td class="roas-cell-bad">56.5%</td><td>₩2,342,041</td><td class="roas-cell-bad">55.3%</td><td>₩117,704</td><td class="roas-cell-ok">101.5%</td></tr>
-        <!-- W3 -->
-        <tr class="week-sep"><td colspan="8" style="background:#fef2f2;color:#991b1b;font-weight:700;padding:6px 12px">W3 · 2026-06-01 ~ 06-07 <span class="partial-tag" style="margin-left:8px">부분 6일</span></td></tr>
-        <tr><td>06-01 월</td><td>₩2,305,635</td><td>₩3,303,931</td><td class="roas-cell-bad">69.8%</td><td>₩2,305,635</td><td class="roas-cell-bad">72.0%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <tr><td>06-02 화</td><td>₩3,997,065</td><td>₩2,743,389</td><td class="roas-cell-ok">145.7%</td><td>₩3,961,065</td><td class="roas-cell-ok">153.4%</td><td>₩36,000</td><td class="roas-cell-bad">22.3%</td></tr>
-        <tr><td>06-03 수</td><td>₩2,453,100</td><td>₩2,551,460</td><td class="roas-cell-mid">96.1%</td><td>₩2,453,100</td><td class="roas-cell-ok">101.0%</td><td class="no-data">₩0</td><td class="no-data">—</td></tr>
-        <tr><td>06-04 목</td><td>₩1,872,690</td><td>₩2,157,663</td><td class="roas-cell-bad">86.8%</td><td>₩1,835,160</td><td class="roas-cell-bad">88.9%</td><td>₩37,530</td><td class="roas-cell-bad">40.7%</td></tr>
-        <tr><td>06-05 금</td><td>₩2,076,225</td><td>₩2,612,494</td><td class="roas-cell-bad">79.5%</td><td>₩1,888,575</td><td class="roas-cell-bad">80.4%</td><td>₩187,650</td><td class="roas-cell-bad">70.9%</td></tr>
-        <tr><td>06-06 토</td><td>₩3,219,495</td><td>₩3,818,068</td><td class="roas-cell-bad">84.3%</td><td>₩3,175,995</td><td class="roas-cell-mid">92.2%</td><td>₩43,500</td><td class="roas-cell-bad">11.6%</td></tr>
-        <tr><td class="no-data">06-07 일</td><td class="no-data">—</td><td class="no-data">—</td><td class="no-data">—</td><td class="no-data">—</td><td class="no-data">—</td><td class="no-data">—</td><td class="no-data">—</td></tr>
-      </tbody>
-    </table>
-  </div>
+<h2>⚠ 핵심 인사이트 — 알람 3개</h2>
+<div class="insight i-green"><h4>✅ W3 확정 — 목표 초과 달성, ROAS 86.44% (목표 80% +6.44%p)</h4>
+06-07(일) 데이터 입력 완료로 W3 7일 확정. 최종 ROAS 86.44%로 직전 부분집계(92.65%)보다 낮아졌으나 여전히 목표 초과.
+06-07 단일일 ROAS 56.5%가 주간 평균을 끌어내림. Main 주간 90.87%는 견조하나 Bella 26.33%는 전체 평균을 잠식 중.</div>
 
-  <!-- ── THIS WEEK PREVIEW ─────────────────────── -->
-  <div class="section-title">이번 주 진행 미리보기 (W4)</div>
-  <div class="preview-card">
-    <h3>🔄 2026-06-08 ~ 06-14 (이번 주 진행 중)</h3>
-    <p class="preview-note">오늘(06-08) 기준 데이터 미입력. 6월 목표 ROAS <b>80%</b> 유지를 위해 일별 매출 ≥ 광고비 × 0.8 기준으로 집행하세요. W3에서 목표 초과 달성한 흐름을 이번 주도 유지하는 것이 핵심. Bella 추적 단절 복구 여부를 오늘 확인하세요.</p>
-    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      <div style="background:#f8fafc;border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:11px;color:#94a3b8">W3 일평균 매출</div>
-        <div style="font-size:16px;font-weight:700;color:#334155">₩2,654,035</div>
-        <div style="font-size:11px;color:#64748b">(6일 기준)</div>
-      </div>
-      <div style="background:#f8fafc;border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:11px;color:#94a3b8">W3 일평균 광고비</div>
-        <div style="font-size:16px;font-weight:700;color:#334155">₩2,864,501</div>
-        <div style="font-size:11px;color:#64748b">(6일 기준)</div>
-      </div>
-      <div style="background:#f0fdf4;border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:11px;color:#94a3b8">W3 일평균 ROAS</div>
-        <div style="font-size:16px;font-weight:700;color:#16a34a">92.65%</div>
-        <div style="font-size:11px;color:#16a34a">목표(80%) +12.65%p ✅</div>
-      </div>
-    </div>
-  </div>
+<div class="insight i-red"><h4>🔴 시급 ① W4 초반 급락 — 06-08~09 ROAS 45.41% (목표 80%)</h4>
+06-08 ROAS 48.2%, 06-09 41.3%로 2일 연속 급락. 특히 광고비는 일 ₩3.2M~4.6M 수준으로 W3 일평균(₩3.0M) 대비 높게 유지되는데
+매출이 따라오지 못하는 구조. 06-07부터 3일 연속 60% 미만 — W2 악화 패턴(광고비 확대 → 효율 급락)의 재현 가능성. 즉각적인 캠페인별 효율 점검 필요.</div>
 
-  <!-- ── CAMPAIGN ACTIVITY ─────────────────────── -->
-  <div class="stats-row" style="margin-top:16px">
-    <div class="stat-card">
-      <h3>🟢 Top 5 활성 캠페인 (W3 기준)</h3>
-      <div class="campaign-row"><span class="camp-name">Main - SP 자동 타겟팅 베스트셀러</span><span class="camp-status camp-on">ON</span></div>
-      <div class="campaign-row"><span class="camp-name">Main - SP 수동 키워드 (EGF/세럼)</span><span class="camp-status camp-on">ON</span></div>
-      <div class="campaign-row"><span class="camp-name">Main - SB 브랜드 영상 캠페인</span><span class="camp-status camp-on">ON</span></div>
-      <div class="campaign-row"><span class="camp-name">Main - SD 제품 타겟팅 (경쟁사)</span><span class="camp-status camp-on">ON</span></div>
-      <div class="campaign-row"><span class="camp-name">Bella - SP 자동 (신제품 론칭)</span><span class="camp-status camp-on">ON</span></div>
-    </div>
-    <div class="stat-card">
-      <h3>🔴 일시 정지 / 저효율 캠페인</h3>
-      <div class="campaign-row"><span class="camp-name">Bella - SP 수동 (CTR 0% 소재)</span><span class="camp-status camp-off">OFF</span></div>
-      <div class="campaign-row"><span class="camp-name">Main - SP 넓은 일치 테스트</span><span class="camp-status camp-off">PAUSE</span></div>
-      <div class="campaign-row"><span class="camp-name">Bella - SB 브랜드 (링크 오류)</span><span class="camp-status camp-off">OFF</span></div>
-      <div class="campaign-row"><span class="camp-name">Main - SD 카테고리 (ROAS 30%↓)</span><span class="camp-status camp-off">PAUSE</span></div>
-      <div class="campaign-row"><span class="camp-name">Bella - SD 리타겟팅 (전환 0)</span><span class="camp-status camp-off">OFF</span></div>
-    </div>
-  </div>
+<div class="insight i-yellow"><h4>🟡 Bella 저효율 지속 — W3 ROAS 26.33%, 광고비 ₩1,462,795 소진</h4>
+Bella는 W3 광고비 ₩1,462,795(전체의 6.9%)를 쓰고 매출 ₩385,155(2.1%)에 그침.
+매출 0원 일수 W3 중 2일(06-01, 06-03). 05-15 EGF 링크 변경 이후 간헐적 추적 단절이 4주째 지속 —
+Bella SP 최종 URL·전환 추적 태그 전수 점검이 여전히 미해결 상태.</div>
 
-  <!-- ── ALARMS ────────────────────────────────── -->
-  <div class="section-title">⚠ 핵심 인사이트 — 알람 3개</div>
+<div class="insight i-yellow"><h4>🟡 6월 누적 ROAS 75.50% — 목표 재이탈</h4>
+W3 종료 시점 86.44%였던 6월 누적이 W4 이틀 만에 75.50%로 하락, 목표(80%) 아래로 재진입.
+잔여 기간(06-10~06-30) 동안 누적 회복을 위해선 일별 ROAS 80%+ 유지가 필수.</div>
 
-  <div class="alarm-card info" style="background:#f0fdf4;border-color:#86efac">
-    <div class="alarm-title" style="color:#166534">✅ W3 목표 초과 달성 — ROAS 92.65% (목표 80% +12.65%p)</div>
-    <div class="alarm-body">
-      W3 (6일 기준) ROAS 92.65%로 6월 목표(80%) 대비 +12.65%p 초과. 광고비를 W2 대비 -42.3% 대폭 절감하면서도 ROAS가 크게 개선된 점이 긍정적. Main 97.22%는 목표를 충분히 상회. 다만 Bella(27.20%)는 목표 대비 크게 미달 중이며 전체 평균을 끌어내리고 있음. 06-07(일) 데이터 입력 시 실제 주간 ROAS 재확인 필요.
-    </div>
-  </div>
+<div class="insight i-blue"><h4>🔵 모니터링 — 06-02 Main ROAS 153.4% 재현 전략</h4>
+W3 최고 효율일(06-02): 광고비 ₩2.58M(주간 최저 수준)으로 매출 ₩3.96M. 저비용·고효율 조합이 입증된 사례로,
+해당일 소재·키워드 구성의 W4 확대 적용 여부를 금주 의제로 유지.</div>
 
-  <div class="alarm-card">
-    <div class="alarm-title">🔴 시급 ① W1·W2 연속 목표 미달 — ROAS 73.83% / 65.97% (목표 80%)</div>
-    <div class="alarm-body">
-      W1 73.83%, W2 65.97%로 2주 연속 6월 목표(80%) 미달. 특히 W2는 광고비 ₩29.8M 역대 최고를 기록했음에도 ROAS 최저. W3에서 광고비 축소로 ROAS가 빠르게 회복된 패턴이 확인됨 — W4에서도 효율 중심 집행이 유효한 전략으로 판단됨.
-    </div>
-  </div>
-
-  <div class="alarm-card warn">
-    <div class="alarm-title">🟡 구조적 악화 — W1→W2 광고비 증가폭이 매출 증가폭 초과</div>
-    <div class="alarm-body">
-      W1→W2 전환: 매출 +82.9% 증가 vs 광고비 +104.6% 증가. 광고비가 매출보다 21.7%p 더 빠르게 증가하여 ROAS 73.83% → 65.97%로 -10.6% 악화. W2 총 광고비 ₩29.8M은 역대 최고 수준으로, 당시 캠페인 확장이 효율 저하를 동반했음. W2→W3에서는 광고비를 -42.3% 대폭 축소하며 ROAS를 회복 중이나, 매출도 동반 감소(-18.9%). 현재 비용 효율 개선 vs 매출 볼륨 딜레마 국면.
-    </div>
-  </div>
-
-  <div class="alarm-card warn">
-    <div class="alarm-title">🟡 추적 단절 지속 — W3 Bella ROAS 0% 일수 3일 (6월 1일·3일·7일)</div>
-    <div class="alarm-body">
-      W3 7일 중 3일(06-01, 06-03, 06-07)에서 Bella 매출 0. 광고비는 발생(6일 합계 ₩1,120,334)했으나 전환 추적 불가. Bella 7831 계정의 LP 링크 또는 전환 추적 태그 오류 가능성. 05-15 EGF 링크 변경 이후 간헐적 추적 단절이 3주째 지속 중. 오늘 Bella 상세페이지 URL 및 SP 광고 최종 URL 재확인 필요.
-    </div>
-  </div>
-
-  <div class="alarm-card info">
-    <div class="alarm-title">🔵 모니터링 — 06-02 Main ROAS 153.4% 회복 단서</div>
-    <div class="alarm-body">
-      06-02(화) Main ROAS 153.4% 기록 — W2 최고치(W2 내 최고 67.3%)를 크게 상회. 해당일 광고비 ₩2,581,911로 W3 중 최저 수준임에도 매출 ₩3,961,065 달성. 소재 변경 또는 타겟팅 조정 효과일 가능성 있음. 06-02 캠페인 상세 리포트 확인 및 해당 소재·키워드 확장 여부 금주 의제로 채택 권장.
-    </div>
-  </div>
-
-  <!-- ── AGENDA ────────────────────────────────── -->
-  <div class="section-title">주간회의 토론 안건 (7개)</div>
-  <div class="agenda-grid">
-    <div class="agenda-item">
-      <div class="agenda-num">안건 01</div>
-      <div class="agenda-q">Bella 전환 추적 단절 3주 지속 — 근본 원인 확정</div>
-      <div class="agenda-hint">05-15 EGF 링크 변경 이후 간헐적 0% 전환 반복. 오늘 Bella SP 최종 URL 전수 점검 및 추적 태그(DSP 픽셀) 재확인 필요. 이번 주 내 수정 완료 여부 결정.</div>
-    </div>
-    <div class="agenda-item">
-      <div class="agenda-num">안건 02</div>
-      <div class="agenda-q">W3 ROAS 92.65% — 이번 주 광고비 목표치 재설정</div>
-      <div class="agenda-hint">W2 ₩29.8M → W3 ₩17.2M으로 급감. 매출도 동반 감소. 이번 주 (W4) 일별 광고비 캡을 얼마로 설정할지 결정. ROAS 100%+ 복구 우선 vs 매출 볼륨 유지 중 선택.</div>
-    </div>
-    <div class="agenda-item">
-      <div class="agenda-num">안건 03</div>
-      <div class="agenda-q">06-02 Main ROAS 153.4% 회복 요인 분석</div>
-      <div class="agenda-hint">광고비 ₩2.6M으로 역대 최저 수준이었음에도 최고 ROAS 달성. 해당일 활성 소재·키워드·캠페인 구조 특이점 파악 후 재현 전략 수립.</div>
-    </div>
-    <div class="agenda-item">
-      <div class="agenda-num">안건 04</div>
-      <div class="agenda-q">Main vs Bella 예산 배분 재검토</div>
-      <div class="agenda-hint">Bella가 전체 광고비의 약 6.5%(W3 ₩1.12M/₩17.2M)를 소비하나 매출 기여 1.91%로 비효율. W4 Bella 예산 일시 정지 또는 대폭 축소 여부 결정.</div>
-    </div>
-    <div class="agenda-item">
-      <div class="agenda-num">안건 05</div>
-      <div class="agenda-q">W1~W3 주간 변동성 과다 — 캠페인 안정화 방안</div>
-      <div class="agenda-hint">일별 ROAS 50.5%(05-21) ~ 145.7%(06-02) 범위로 변동성 과대. CBO/ABO 전략 재검토 및 자동 입찰 규칙(자동 일시정지 트리거) 도입 검토.</div>
-    </div>
-    <div class="agenda-item">
-      <div class="agenda-num">안건 06</div>
-      <div class="agenda-q">6월 누적 ROAS 목표 — 월말까지 100% 달성 가능성</div>
-      <div class="agenda-hint">현재 6월 6일치 기준 92.65%. 잔여 24일(06-08~06-30) 동안 손익분기 이상 유지 시 월 목표 달성 가능. 주간 목표 ROAS 및 광고비 예산 플랜 수립 논의.</div>
-    </div>
-    <div class="agenda-item">
-      <div class="agenda-num">안건 07</div>
-      <div class="agenda-q">Main CTR 추이 — 소재 교체 타이밍 점검</div>
-      <div class="agenda-hint">W3 Main CTR 4.0~5.1% 수준으로 W1 대비 안정적이나 일부 소재 노출 대비 CTR 저하 패턴 확인 필요. SB 영상 소재 A/B 테스트 결과 리뷰 및 신규 소재 투입 시기 결정.</div>
-    </div>
-  </div>
-
-</div><!-- /container -->
+<h2>주간회의 토론 안건 (7개)</h2>
+<div class="agenda"><b>안건 01</b> · <b>W4 초반 ROAS 급락(45.4%) 원인 진단 및 긴급 대응</b><br>
+06-08~09 광고비 ₩7.7M 대비 매출 ₩3.5M. 캠페인별 일별 리포트로 비효율 캠페인 즉시 식별, 일별 광고비 캡 하향 여부 오늘 결정.</div>
+<div class="agenda"><b>안건 02</b> · <b>Bella 전환 추적 단절 4주째 — 근본 원인 확정</b><br>
+05-15 EGF 링크 변경 이후 간헐적 0% 전환 반복. Bella SP 최종 URL 전수 점검 및 추적 태그(DSP 픽셀) 재확인. 이번 주 내 수정 완료 여부 결정.</div>
+<div class="agenda"><b>안건 03</b> · <b>06-02 Main ROAS 153.4% 회복 요인 분석</b><br>
+광고비 ₩2.6M 최저 수준에서 최고 ROAS 달성. 해당일 활성 소재·키워드·캠페인 구조 특이점 파악 후 재현 전략 수립.</div>
+<div class="agenda"><b>안건 04</b> · <b>Main vs Bella 예산 배분 재검토</b><br>
+Bella가 W3 전체 광고비의 6.9%(₩1,462,795)를 소비하나 매출 기여 2.1%. W4 Bella 예산 일시 정지 또는 대폭 축소 여부 결정.</div>
+<div class="agenda"><b>안건 05</b> · <b>주간 변동성 과다 — 캠페인 안정화 방안</b><br>
+일별 ROAS 41.3%(06-09) ~ 145.7%(06-02) 범위. CBO/ABO 전략 재검토 및 자동 입찰 규칙(자동 일시정지 트리거) 도입 검토.</div>
+<div class="agenda"><b>안건 06</b> · <b>6월 누적 ROAS 75.50% — 월말 80% 회복 플랜</b><br>
+잔여 20일(06-10~06-30) 손익분기 이상 유지 시 월 목표 달성 가능. 주간 목표 ROAS 및 광고비 예산 플랜 수립.</div>
+<div class="agenda"><b>안건 07</b> · <b>Main CTR 추이 — 소재 교체 타이밍 점검</b><br>
+W4 초반 Main CTR 3.0~3.4%로 W3(3.3~5.1%) 대비 하단. SB 영상 소재 A/B 테스트 결과 리뷰 및 신규 소재 투입 시기 결정.</div>
 
 <script>
-// ── Chart 1: 주차별 매출/광고비/ROAS ──
-const ctx1 = document.getElementById('chartWeekly').getContext('2d');
-new Chart(ctx1, {
-  type: 'bar',
-  data: {
-    labels: ['W1 (5/18-24)', 'W2 (5/25-31)', 'W3 (6/1-7, 6일)'],
-    datasets: [
-      { label: '매출(만원)', data: [1074.3, 1964.5, 1592.4], backgroundColor: ['rgba(22,163,74,0.7)','rgba(217,119,6,0.7)','rgba(220,38,38,0.7)'], yAxisID: 'y' },
-      { label: '광고비(만원)', data: [1455.2, 2977.7, 1718.7], backgroundColor: ['rgba(22,163,74,0.3)','rgba(217,119,6,0.3)','rgba(220,38,38,0.3)'], yAxisID: 'y' },
-      { label: 'ROAS(%)', data: [73.83, 65.97, 92.65], type: 'line', borderColor: '#4a5491', backgroundColor: 'transparent', pointBackgroundColor: '#4a5491', pointRadius: 5, yAxisID: 'y2', tension: 0.3 }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { font: { size: 11 } } } },
-    scales: {
-      y:  { type: 'linear', position: 'left',  title: { display: true, text: '만원', font: {size:10} }, ticks: { font: {size:10} } },
-      y2: { type: 'linear', position: 'right', title: { display: true, text: 'ROAS%', font: {size:10} }, ticks: { font: {size:10} }, grid: { drawOnChartArea: false } }
-    }
-  }
-});
-
-// ── Chart 2: 일별 ROAS ──
-const ctx2 = document.getElementById('chartDailyRoas').getContext('2d');
-const dailyLabels = [
-  '5/18','5/19','5/20','5/21','5/22','5/23','5/24',
-  '5/25','5/26','5/27','5/28','5/29','5/30','5/31',
-  '6/1','6/2','6/3','6/4','6/5','6/6','6/7'
-];
-const dailyRoas = [65.7,66.4,136.8,50.5,64.5,75.8,81.3, 86.1,61.3,67.3,60.5,66.4,70.4,56.5, 69.8,145.7,96.1,86.8,79.5,84.3,null];
-const rasoColors = dailyRoas.map(v => v === null ? 'transparent' : (v >= 80 ? 'rgba(22,163,74,0.8)' : v >= 65 ? 'rgba(217,119,6,0.8)' : 'rgba(220,38,38,0.8)'));
-new Chart(ctx2, {
-  type: 'bar',
-  data: {
-    labels: dailyLabels,
-    datasets: [
-      { label: 'ROAS(%)', data: dailyRoas, backgroundColor: rasoColors, borderRadius: 3 },
-      { label: '6월 목표(80%)', data: Array(21).fill(80), type: 'line', borderColor: '#16a34a', borderDash: [5,3], pointRadius: 0, borderWidth: 2 }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { font: { size: 10 } } } },
-    scales: {
-      x: { ticks: { font: {size:9}, maxRotation: 45 } },
-      y: { ticks: { font: {size:10} }, suggestedMin: 0, suggestedMax: 160 }
-    }
-  }
-});
-
-// ── Chart 3: 일별 Main vs Bella 매출 ──
-const ctx3 = document.getElementById('chartMainBella').getContext('2d');
-const mainSales = [985221,938246,1345705,877596,1745068,2390955,2236916, 2327019,2240764,2907697,2867012,3060418,3503678,2342041, 2305635,3961065,2453100,1835160,1888575,3175995,0];
-const bellaSales = [37340,0,74326,74326,0,37163,0, 0,74148,130758,0,0,74118,117704, 0,36000,0,37530,187650,43500,0];
-new Chart(ctx3, {
-  type: 'bar',
-  data: {
-    labels: dailyLabels,
-    datasets: [
-      { label: 'Main 매출', data: mainSales.map(v=>Math.round(v/10000)), backgroundColor: 'rgba(74,84,145,0.7)', stack: 'stack' },
-      { label: 'Bella 매출', data: bellaSales.map(v=>Math.round(v/10000)), backgroundColor: 'rgba(251,146,60,0.8)', stack: 'stack' }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { font: { size: 10 } } } },
-    scales: {
-      x: { stacked: true, ticks: { font: {size:9}, maxRotation: 45 } },
-      y: { stacked: true, ticks: { font: {size:10} }, title: { display: true, text: '만원', font: {size:10} } }
-    }
-  }
-});
-
-// ── Chart 4: 계정별 주차 ROAS 비교 ──
-const ctx4 = document.getElementById('chartAccount').getContext('2d');
-new Chart(ctx4, {
-  type: 'bar',
-  data: {
-    labels: ['Total', 'Main (4233)', 'Bella (7831)'],
-    datasets: [
-      { label: 'W1 ROAS', data: [73.83, 74.74, 46.91], backgroundColor: 'rgba(22,163,74,0.7)' },
-      { label: 'W2 ROAS', data: [65.97, 66.40, 50.38], backgroundColor: 'rgba(217,119,6,0.7)' },
-      { label: 'W3 ROAS(6일)', data: [92.65, 97.22, 27.20], backgroundColor: 'rgba(220,38,38,0.7)' }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { font: { size: 10 } } } },
-    scales: {
-      y: { suggestedMin: 0, suggestedMax: 160, ticks: { font: {size:10} },
-           title: { display: true, text: 'ROAS(%)', font: {size:10} } },
-      x: { ticks: { font: {size:10} } }
-    }
-  }
-});
+const C={grid:'#2a3550',txt:'#9aa3b5'};
+Chart.defaults.color=C.txt; Chart.defaults.borderColor=C.grid;
+new Chart(document.getElementById('c1'),{type:'bar',data:{labels:['W1','W2','W3'],datasets:[
+ {label:'매출',data:[10742861,19645357,18389175],backgroundColor:'#4f8cff'},
+ {label:'광고비',data:[14551570,29777001,21274698],backgroundColor:'#ff6b6b'},
+ {label:'ROAS(%)',data:[73.83,65.97,86.44],type:'line',yAxisID:'y2',borderColor:'#ffd166',backgroundColor:'#ffd166'}]},
+ options:{scales:{y2:{position:'right',grid:{display:false}}}}});
+new Chart(document.getElementById('c2'),{type:'line',data:{labels:["05-18", "05-19", "05-20", "05-21", "05-22", "05-23", "05-24", "05-25", "05-26", "05-27", "05-28", "05-29", "05-30", "05-31", "06-01", "06-02", "06-03", "06-04", "06-05", "06-06", "06-07"],datasets:[
+ {label:'일별 ROAS(%)',data:[65.7, 66.4, 136.8, 50.5, 64.5, 75.8, 81.3, 86.1, 61.3, 67.3, 60.5, 66.4, 70.4, 56.5, 69.8, 145.7, 96.1, 86.8, 79.5, 88.4, 56.5],borderColor:'#3ddc84',tension:.3},
+ {label:'목표 80%',data:Array(21).fill(80),borderColor:'#ffd166',borderDash:[6,4],pointRadius:0}]}});
+new Chart(document.getElementById('c3'),{type:'bar',data:{labels:["05-18", "05-19", "05-20", "05-21", "05-22", "05-23", "05-24", "05-25", "05-26", "05-27", "05-28", "05-29", "05-30", "05-31", "06-01", "06-02", "06-03", "06-04", "06-05", "06-06", "06-07"],datasets:[
+ {label:'Main',data:[985221, 938246, 1345705, 877596, 1745068, 2390955, 2236916, 2327019, 2240764, 2907697, 2867012, 3060418, 3503678, 2342041, 2305635, 3961065, 2453100, 1835160, 1888575, 3335025, 2225460],backgroundColor:'#4f8cff',stack:'s'},
+ {label:'Bella',data:[37340, 0, 74326, 74326, 0, 37163, 0, 0, 74148, 130758, 0, 0, 74118, 117704, 0, 36000, 0, 37530, 187650, 43500, 80475],backgroundColor:'#ff9f43',stack:'s'}]},options:{scales:{x:{stacked:true},y:{stacked:true}}}});
+new Chart(document.getElementById('c4'),{type:'bar',data:{labels:['W1','W2','W3'],datasets:[
+ {label:'Main(%)',data:[74.74,66.40,90.87],backgroundColor:'#4f8cff'},
+ {label:'Bella(%)',data:[46.91,50.38,26.33],backgroundColor:'#ff9f43'},
+ {label:'TOTAL(%)',data:[73.83,65.97,86.44],backgroundColor:'#3ddc84'}]}});
 </script>
-</body>
-</html>
+</body></html>
