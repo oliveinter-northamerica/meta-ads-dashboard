@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import hmac as hmac_module
 import json
+import time
 import os
 import re
 import sys
@@ -136,9 +137,26 @@ def staticrypt_encrypt(template_html: str, plaintext: str, password: str) -> str
 # ─── HTTP helpers ──────────────────────────────────────────────────────────────
 
 def _http_get(url: str, headers: dict | None = None) -> dict:
-    req = urllib.request.Request(url, headers=headers or {})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read().decode())
+    last_err = None
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(url, headers=headers or {})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            last_err = e
+            # Retry on Meta transient server errors (5xx); fail fast on 4xx
+            if 500 <= e.code < 600 and attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise
+        except urllib.error.URLError as e:
+            last_err = e
+            if attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise
+    raise last_err
 
 def _http_get_text(url: str) -> str:
     with urllib.request.urlopen(
