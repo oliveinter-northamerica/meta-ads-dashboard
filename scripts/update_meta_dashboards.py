@@ -579,19 +579,28 @@ def main():
         print("[5/6] Bella 스킵")
 
     print("[6/6] Meta+Amazon Attribution 인사이트…")
-    maz_data = fetch_meta_amazon_insights(MAIN_ACCOUNT, meta_token, days)
+    try:
+        maz_data = fetch_meta_amazon_insights(MAIN_ACCOUNT, meta_token, days)
+    except Exception as e:
+        print(f"      WARNING: meta-amazon insights failed ({e}) — meta-amazon.html 스킵 (기존 버전 유지)")
+        maz_data = None
 
     print("      Google Sheets 아마존 실매출…")
-    amz = fetch_amazon_sales_from_sheet(sheets_id)
-    print(f"      {len(amz)}행")
+    try:
+        amz = fetch_amazon_sales_from_sheet(sheets_id)
+        print(f"      {len(amz)}행")
+    except Exception as e:
+        print(f"      WARNING: Google Sheets 실패 ({e}) — Amazon 실매출 빈 배열")
+        amz = []
 
     pages = {
         "campaigns.html":                       build_campaigns_js(md, mc, pl, days),
         "meta-daily.html":                      build_meta_daily_js(md, bd, mc, bc, ma, ba),
         "meta-combined.html":                   build_meta_combined_js(md, bd, mc, bc, ma, ba),
-        "meta-amazon.html":                     build_meta_amazon_js(maz_data),
         "ads_daily_withAmazonSales/index.html": build_ads_daily_js(md, bd, amz, mc, bc, ma, ba),
     }
+    if maz_data is not None:
+        pages["meta-amazon.html"] = build_meta_amazon_js(maz_data)
 
     errors = []
     for path, data_js in pages.items():
